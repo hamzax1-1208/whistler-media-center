@@ -1,0 +1,320 @@
+/* Odyssey Media Center — Windows XP Media Center Edition 2002 in a browser tab.
+   The three constants, per docs/mce-2002-reference.md in Kiyora:
+     1. a huge lowercase watermark of the section name, content sits ON it
+     2. selection is a bright green gel with a hard highlight break
+     3. Trebuchet, because Segoe UI reads as the wrong decade                          */
+
+/* Numbers below come from the real thing: ehres.dll build 5.1.2600.1106 (see
+   reference/mce2002/MEASUREMENTS.md). Where the shell's style sheet and Kiyora's
+   screenshot measurements disagree, the style sheet wins.                                */
+:root {
+  --s: 1;                                  /* stage scale, set from JS */
+  --era: "Trebuchet MS", Trebuchet, "Lucida Grande", "DejaVu Sans", sans-serif;
+  /* the shell's palette, by its own constant names */
+  --offwhite: #F2F2F2; --lightblue: #B2D4F5; --mediumblue: #4F6EB9; --darkblue: #072053; --navyblue: #0F2D8B;
+  /* Common.Button.NoFocus / .Dormant: translucent blue slabs, not white */
+  --slab: rgba(67, 101, 191, .50);
+  --slab-dormant: rgba(45, 73, 146, .50);
+  --slab-edge: rgba(74, 114, 218, .47);
+  --slab-hover: rgba(80, 118, 210, .58);
+  /* Common.Button.Focus: a soft gloss, bright in the top third, dark at the bottom edge. No hard break. */
+  --gel: linear-gradient(to bottom, #30AC32 0%, #55C354 12%, #3AAD3A 24%, #2FA62F 42%, #2FAB2F 60%, #2CAA2D 72%, #29A629 78%, #23A023 84%, #1B931B 90%, #107710 100%);
+  --gel-edge: #55C354;
+  --green: #3DA33A;
+  --text: var(--offwhite);
+  --text-dim: var(--lightblue);
+  --text-faint: #8FB0D8;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #143459; }
+body { font-family: var(--era); color: var(--text); user-select: none; -webkit-user-select: none; cursor: default; }
+img { -webkit-user-drag: none; }
+
+/* ---------------------------------------------------------------- backdrop
+   Common.Background.png is a painted 1024x768 light curtain: vertical streaks, bright
+   around x=130-200 and x=700, a dark band near x=830, darker at the top than the bottom.
+   Sampled every 64px across the middle row and rebuilt as two gradients. */
+#bg {
+  position: fixed; inset: 0; z-index: 0;
+  background: linear-gradient(to right,
+    #1C4689 0%, #2E56A5 6%, #4279C3 12.5%, #4373C8 19%, #396BBA 25%, #2B59AC 31%, #254E99 37.5%, #244B96 44%,
+    #20458F 50%, #224792 56%, #285098 62.5%, #3463AD 69%, #22488A 75%, #1C447D 81%, #214B89 87.5%, #3B64AC 94%, #2A55A0 100%);
+}
+#bg .streaks {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 10, 40, .28) 0%, rgba(0, 10, 40, .10) 30%, rgba(0, 0, 0, 0) 55%, rgba(120, 160, 230, .22) 100%);
+}
+
+/* ---------------------------------------------------------------- stage */
+#stage {
+  position: fixed; left: 50%; top: 50%; width: 1024px; height: 768px; z-index: 1;
+  transform: translate(-50%, -50%) scale(var(--s));
+  transform-origin: center; overflow: visible;
+}
+#stage > .screen { position: absolute; inset: 0; animation: screen-in .18s ease-out; }
+@keyframes screen-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+
+.abs { position: absolute; }
+/* Panel.TitlePanel: FS32 = 150px regular, OffWhite at 10%, char spacing .85, at (-11,-52).
+   HomeLabel ("start"): same face at 12.5%, at (175,129). Regular weight, not bold. */
+.wm {
+  position: absolute; left: -11px; top: -52px; font-size: 150px; font-weight: normal; line-height: 1.2;
+  color: var(--offwhite); opacity: .10; pointer-events: none; white-space: nowrap; letter-spacing: -.04em;
+}
+.wm.start { left: 175px; top: 129px; opacity: .125; }
+/* Panel.ccArea: a 305x159 box from x=50, text right- and bottom-aligned with a 32px bottom margin, FS3 = 18px. */
+.section {
+  position: absolute; left: 50px; top: 0; width: 305px; height: 127px; padding-bottom: 2px;
+  display: flex; align-items: flex-end; justify-content: flex-end; text-align: right;
+  font-size: 18px; letter-spacing: 2px; text-transform: uppercase; color: var(--offwhite); pointer-events: none;
+  white-space: nowrap; overflow: hidden;
+}
+/* Panel.RightColumnLabel: FS8 = 24px bold at top 44, width 605, right margin 83 -> x=336.
+   Panel.RightColumnSubLabel: FS3 = 18px LightBlue at top 83. */
+.titleblock { position: absolute; left: 336px; top: 44px; width: 605px; pointer-events: none; }
+.titleblock .big {
+  font-size: 24px; font-weight: bold; color: var(--offwhite); text-transform: uppercase; letter-spacing: .3px; line-height: 39px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.titleblock .small { font-size: 18px; color: var(--lightblue); line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------------------------------------------------------------- slabs & gel */
+.slab {
+  background: var(--slab); border-top: 1px solid var(--slab-edge); border-radius: 5px;
+  color: var(--lightblue); display: flex; align-items: center; position: relative;
+}
+.slab:hover { background: var(--slab-hover); color: var(--offwhite); }
+.slab.focus, .slab.focus:hover { background: var(--gel); border-top-color: var(--gel-edge); color: var(--offwhite); text-shadow: 0 1px 0 rgba(0,0,0,.22); }
+
+/* start menu: ColumnPanel.HomeMenu is the strip x=410..692, full height, entries centred in it.
+   Entries are StartPage.Button bitmaps, 239x55, text FS7 = 24px regular, inset 28. */
+.menu { position: absolute; left: 410px; top: 0; height: 768px; width: 282px; display: flex; flex-direction: column; justify-content: center; }
+.menu .entry { height: 55px; width: 239px; margin-bottom: 2px; font-size: 24px; padding-left: 28px; }
+
+/* modes column: Panel.Menu margin-left 54 + Button margin 16 = x 70; Common.Button 251x51, FS2 = 20px bold.
+   When the cursor is over in the content, the column shows the Dormant bitmap (darker blue). */
+.modes { position: absolute; left: 70px; top: 186px; width: 251px; }
+.modes .mode { height: 51px; width: 251px; margin-bottom: 2px; font-size: 20px; font-weight: bold; padding-left: 24px; padding-right: 34px; }
+.modes.dormant .mode:not(.focus) { background: var(--slab-dormant); }
+.modes .mode .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modes .mode .dot {
+  position: absolute; right: 18px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%;
+  background: rgba(255,255,255,.3);
+}
+.modes .mode .dot.on { background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8); }
+.modes .mode.focus .dot { background: rgba(255,255,255,.55); }
+.modes .mode.focus .dot.on { background: #fff; }
+
+/* clock: Clock.Date.Home right-aligned to x=378 at top 275 (FS1 = 20px, LightBlue);
+   Clock.Time.Home at (206,308), FS2 = 20px bold. Left of the menu, below the watermark's baseline. */
+.clock { position: absolute; left: 60px; top: 275px; width: 318px; text-align: right; pointer-events: none; }
+.clock .date { font-size: 20px; color: var(--lightblue); line-height: 28px; }
+.clock .time { font-size: 20px; font-weight: bold; color: var(--offwhite); line-height: 28px; margin-top: 5px; }
+
+/* Image.HomeWatermark: a 362x336 ghosted device at (578,121), one per entry, swapped with focus. */
+.ghost { position: absolute; left: 578px; top: 121px; width: 362px; height: 336px; opacity: .09; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+.ghost svg { width: 300px; height: 300px; fill: none; stroke: #fff; stroke-width: .6; }
+.status { position: absolute; left: 70px; top: 732px; width: 300px; font-size: 12px; color: var(--text-faint); opacity: .75; pointer-events: none; }
+/* the start screen keeps its status line under the menu */
+.menu ~ .status { left: 410px; top: 625px; width: 420px; }
+
+/* ---------------------------------------------------------------- tiles
+   FancyGallery: 3x3 of Common.Tile 212x196 in a 636-wide panel at the right edge (x=388), 23px
+   below the 159px top band. The tile bitmap is a rounded blue square (#486DCD 50%) holding the
+   picture with the GalleryLabel (FS13 = 16px bold, 146x30) under it; focused = solid green. */
+.grid { position: absolute; left: 388px; top: 182px; width: 636px; height: 588px; display: grid; grid-template-columns: repeat(3, 212px); column-gap: 0; row-gap: 0; align-content: start; }
+.tile { width: 212px; height: 196px; padding: 10px 10px 0; border-radius: 10px; background: rgba(72, 109, 205, .5); display: flex; flex-direction: column; margin: 0; }
+.tile .thumb {
+  width: 192px; height: 140px; padding: 0; border: 0; border-radius: 3px;
+  background: rgba(0, 20, 60, .25); position: relative; overflow: hidden; flex: 0 0 140px;
+}
+.tile .thumb > img, .tile .thumb > canvas { width: 100%; height: 100%; object-fit: cover; display: block; background: #0d2340; }
+.tile .thumb .mosaic { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; }
+.tile .thumb .mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; background: #0d2340; }
+.tile .thumb .glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.tile .thumb .glyph svg { width: 64px; height: 64px; fill: none; stroke: #fff; stroke-width: 1.3; opacity: .8; }
+.tile .thumb .badge { position: absolute; right: 6px; bottom: 5px; font-size: 11px; padding: 1px 5px; background: rgba(0,0,0,.55); border-radius: 2px; color: #fff; }
+.tile .thumb .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(0,0,0,.5); }
+.tile .thumb .prog i { display: block; height: 100%; background: var(--green); }
+.tile.focus { background: linear-gradient(to bottom, #58BE56 0%, #5FBE5E 10%, #46AF45 30%, #3AB038 55%, #36B334 70%, #2CAA2C 88%, #269424 100%); }
+.tile:hover:not(.focus) { background: rgba(80, 118, 210, .58); }
+.tile .cap { font-size: 16px; font-weight: bold; line-height: 30px; height: 30px; margin: 6px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--lightblue); }
+.tile.focus .cap { color: var(--offwhite); }
+
+/* ---------------------------------------------------------------- rows
+   Common.ListButton 607x51, same gloss as the buttons; text FS6 = 22px bold. */
+.rows { position: absolute; left: 388px; top: 182px; width: 607px; height: 588px; }
+.rows .row { height: 51px; width: 607px; margin-bottom: 2px; font-size: 22px; font-weight: bold; }
+.rows .row .mark { width: 20px; flex: 0 0 20px; display: flex; justify-content: center; }
+.rows .row .mark i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: block; }
+.rows .row .mark i.half { background: linear-gradient(90deg, var(--green) 50%, rgba(255,255,255,.35) 50%); }
+.rows .row .ico { min-width: 34px; flex: 0 0 auto; padding: 0 8px 0 2px; display: flex; align-items: center; justify-content: center; }
+.rows .row .ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; opacity: .85; }
+.rows .row .ico .num { font-size: 15px; opacity: .8; }
+.rows .row .lbl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
+.rows .row .sub { font-size: 14px; opacity: .75; font-weight: normal; margin-left: 8px; }
+.rows .row .meta { flex: 0 0 auto; font-size: 18px; font-weight: normal; padding-right: 16px; opacity: .9; white-space: nowrap; }
+.rows .row.focus .meta { opacity: 1; }
+.rows .row .eq { display: none; align-items: flex-end; gap: 2px; height: 13px; margin-right: 8px; }
+.rows .row .eq i { display: block; width: 2px; background: #fff; }
+.rows .row.playing .eq { display: flex; }
+.rows .row .eq i:nth-child(1) { height: 7px; animation: eq .7s ease-in-out infinite alternate; }
+.rows .row .eq i:nth-child(2) { height: 13px; animation: eq .5s ease-in-out infinite alternate; }
+.rows .row .eq i:nth-child(3) { height: 9px; animation: eq .9s ease-in-out infinite alternate; }
+@keyframes eq { to { height: 3px; } }
+
+/* "N of M": the gallery now fills the panel to the bottom edge, so the counter sits in the top band's right corner. */
+.paging { position: absolute; left: 700px; top: 118px; width: 324px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 20px; color: var(--offwhite); }
+.paging .chev { display: flex; flex-direction: column; gap: 3px; }
+.paging .chev span { font-size: 13px; line-height: 1; opacity: .9; cursor: pointer; }
+.paging .chev span.dim { opacity: .3; }
+.empty { position: absolute; left: 388px; top: 190px; width: 580px; font-size: 22px; line-height: 1.35; color: var(--text); }
+.empty small { display: block; font-size: 16px; color: var(--text-dim); margin-top: 14px; }
+.loading { position: absolute; left: 388px; top: 190px; font-size: 20px; color: var(--text-dim); }
+.loading::after { content: ""; display: inline-block; width: 10px; animation: dots 1.2s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
+@keyframes dots { to { width: 30px; } }
+
+/* ---------------------------------------------------------------- now playing */
+.np-art { position: absolute; left: 568px; top: 146px; width: 280px; height: 280px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.25); box-shadow: 0 8px 30px rgba(0,0,0,.35); overflow: hidden; }
+.np-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.np-art .glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.np-art .glyph svg { width: 120px; height: 120px; fill: none; stroke: #fff; stroke-width: 1; opacity: .6; }
+.np-track { position: absolute; left: 428px; top: 440px; width: 560px; text-align: center; }
+.np-track .t { font-size: 24px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-track .a { font-size: 17px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-spec { position: absolute; left: 428px; top: 520px; width: 560px; height: 76px; }
+.np-time { position: absolute; left: 640px; top: 616px; width: 350px; text-align: right; font-size: 19px; color: #fff; letter-spacing: 1px; }
+.np-time b { font-weight: normal; color: var(--text-dim); font-size: 14px; letter-spacing: 2px; margin-right: 10px; }
+.np-bar { position: absolute; left: 428px; top: 604px; width: 560px; height: 4px; background: rgba(255,255,255,.2); }
+.np-bar i { display: block; height: 100%; background: var(--green); width: 0; }
+
+/* ---------------------------------------------------------------- transport pill (bottom-LEFT, silver) */
+#transport {
+  position: fixed; left: 14px; bottom: 12px; z-index: 5; height: 30px; padding: 0 8px;
+  display: flex; align-items: center; gap: 2px; border-radius: 15px;
+  background: linear-gradient(to bottom, #FBFDFE 0%, #DCE4EC 46%, #B9C4D0 50%, #D2DAE4 100%);
+  border: 1px solid #8C9AAA; box-shadow: 0 2px 6px rgba(0,0,0,.35), inset 0 1px 0 #fff;
+  transform: scale(var(--s)); transform-origin: left bottom; font-family: var(--era);
+}
+#transport[hidden] { display: none; }
+#transport .tb { height: 22px; min-width: 24px; padding: 0 5px; border: 0; background: transparent; border-radius: 11px; color: #22334A; font-size: 11px; font-family: var(--era); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#transport .tb svg { width: 12px; height: 12px; fill: #22334A; }
+#transport .tb:hover { background: rgba(0,0,0,.08); }
+#transport .tb:active { background: rgba(0,0,0,.16); }
+#transport .sep { width: 1px; height: 16px; background: #9AA8B6; opacity: .6; margin: 0 5px; }
+#transport .lbl { font-size: 8px; color: #22334A; letter-spacing: 1px; }
+#transport .tb.rec svg { fill: #C4342B; }
+
+/* ---------------------------------------------------------------- now-playing inset (bottom-RIGHT) */
+#inset {
+  position: fixed; right: 14px; bottom: 12px; z-index: 5; width: 260px; height: 54px; padding: 6px 10px;
+  background: rgba(255,255,255,.17); border-top: 1px solid rgba(255,255,255,.2); border-radius: 3px;
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  transform: scale(var(--s)); transform-origin: right bottom;
+}
+#inset[hidden] { display: none; }
+#inset:hover { background: rgba(255,255,255,.27); }
+#inset .art { width: 42px; height: 42px; background: rgba(0,0,0,.3); flex: 0 0 42px; overflow: hidden; }
+#inset .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#inset .txt { flex: 1; min-width: 0; }
+#inset .txt .t { font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#inset .txt .a { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#inset canvas { width: 40px; height: 30px; flex: 0 0 40px; }
+
+#toast {
+  position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%) scale(var(--s)); transform-origin: center bottom; z-index: 30;
+  background: var(--gel); color: #fff; font-weight: bold; padding: 8px 22px; font-size: 17px; border-top: 1px solid var(--gel-edge);
+  box-shadow: 0 4px 14px rgba(0,0,0,.35); animation: toast-in .2s ease-out;
+}
+#toast[hidden] { display: none; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) scale(var(--s)) translateY(10px); } }
+
+/* ---------------------------------------------------------------- video player */
+#player { position: fixed; inset: 0; z-index: 10; background: #000; }
+#player[hidden] { display: none; }
+#player.hide-osd { cursor: none; }
+#video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+#video::cue { font-family: var(--era); font-size: 26px; background: rgba(0,0,0,.55); }
+#osd {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 60px 40px 26px; font-family: var(--era);
+  background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0)); transition: opacity .25s; opacity: 1;
+}
+#player.hide-osd #osd { opacity: 0; }
+.osd-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+#osd-name { font-size: 24px; color: #fff; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#osd-sub { font-size: 16px; color: var(--text-dim); white-space: nowrap; margin-left: 20px; }
+.osd-bar { position: relative; height: 8px; background: rgba(255,255,255,.22); border-radius: 4px; cursor: pointer; }
+#osd-buf { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: rgba(255,255,255,.22); border-radius: 4px; }
+#osd-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: var(--gel); border-radius: 4px; }
+#osd-knob { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.6); left: 0; }
+.osd-times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 16px; color: #fff; }
+#osd-scan { color: var(--green); font-weight: bold; letter-spacing: 1px; }
+.osd-btns { position: absolute; right: 40px; top: 16px; display: flex; gap: 6px; }
+.osd-btns button { font-family: var(--era); font-size: 12px; font-weight: bold; letter-spacing: 1.5px; padding: 6px 14px; background: rgba(255,255,255,.17); border: 0; border-top: 1px solid rgba(255,255,255,.3); color: #fff; cursor: pointer; }
+.osd-btns button:hover { background: var(--gel); }
+#video.fill { object-fit: cover; }
+#video.big-cues::cue { font-size: 40px; }
+
+/* The player's options menu: same slab column as every other screen, radio dots for state. */
+#pmenu {
+  position: absolute; left: 40px; top: 40px; width: 440px; padding: 14px 0 8px;
+  background: rgba(6, 20, 40, .62); border-top: 1px solid rgba(255,255,255,.3); box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  transform: scale(var(--s)); transform-origin: top left;
+}
+#pmenu[hidden] { display: none; }
+.pm-title { font-size: 17px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-dim); padding: 0 28px 10px; }
+.pm-row { height: 52px; margin: 0 14px 1px; font-size: 21px; padding-left: 24px; padding-right: 40px; }
+.pm-row .lbl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-row .val { font-size: 15px; opacity: .85; margin-left: 12px; white-space: nowrap; max-width: 210px; overflow: hidden; text-overflow: ellipsis; font-weight: normal; }
+.pm-row .dot { position: absolute; right: 18px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%; background: rgba(255,255,255,.3); }
+.pm-row .dot.on { background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.8); }
+#osd-legend { position: absolute; right: 30px; top: 70px; background: rgba(0,0,0,.65); padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.3); font-size: 15px; color: #fff; }
+#osd-legend[hidden] { display: none; }
+#osd-legend .lg { margin: 4px 0; } #osd-legend b { display: inline-block; min-width: 92px; color: var(--green); }
+
+/* ---------------------------------------------------------------- photo viewer */
+#photo { position: fixed; inset: 0; z-index: 10; background: #000; overflow: hidden; }
+#photo[hidden] { display: none; }
+.photo-layer { position: absolute; inset: 0; background: center / contain no-repeat; opacity: 0; transition: opacity .8s ease; }
+.photo-layer.show { opacity: 1; }
+.photo-layer.kb { animation: kenburns var(--kb-dur, 7s) ease-out forwards; }
+@keyframes kenburns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.09) translate(var(--kb-x, 1%), var(--kb-y, -1%)); } }
+#photo-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 40px 22px; background: linear-gradient(to top, rgba(0,0,0,.7), transparent); display: flex; justify-content: space-between; align-items: baseline; transition: opacity .3s; }
+#photo.hide-cap #photo-cap { opacity: 0; }
+#photo-name { font-size: 24px; color: #fff; text-transform: uppercase; }
+#photo-meta { font-size: 16px; color: var(--text-dim); }
+
+/* ---------------------------------------------------------------- dialog */
+#dialog { position: fixed; inset: 0; z-index: 20; background: rgba(6, 20, 40, .55); display: flex; align-items: center; justify-content: center; }
+#dialog[hidden] { display: none; }
+.dlg {
+  width: 520px; padding: 26px 30px 24px; transform: scale(var(--s)); transform-origin: center;
+  background: radial-gradient(ellipse at 30% 20%, #4A86B8, #1D4A80 70%); border: 1px solid rgba(255,255,255,.35);
+  box-shadow: 0 10px 40px rgba(0,0,0,.5); font-family: var(--era);
+}
+.dlg .t { font-size: 22px; color: #fff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.dlg .q { font-size: 18px; color: var(--text); line-height: 1.4; margin-bottom: 22px; white-space: pre-line; }
+.dlg .btns { display: flex; gap: 6px; justify-content: flex-end; }
+.dlg .btn { min-width: 120px; height: 44px; padding: 0 22px; font-size: 19px; justify-content: center; cursor: pointer; }
+
+/* ---------------------------------------------------------------- settings rows share .rows; value on the right */
+.rows .row .val { flex: 0 0 auto; padding-right: 16px; font-size: 16px; color: #fff; opacity: .95; white-space: nowrap; }
+.about { position: absolute; left: 428px; top: 160px; width: 545px; font-size: 17px; line-height: 1.45; color: var(--text); }
+.about h3 { font-size: 26px; margin: 0 0 8px; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-weight: normal; }
+.about p { margin: 0 0 12px; }
+.about b { color: #fff; }
+
+/* Modern-hint: the browse grid is a mouse target too. */
+.slab, .tile, .paging .chev span { cursor: pointer; }
+
+/* ---------------------------------------------------------------- theme hooks (hidden in the 2002 theme, themes turn them on) */
+.titlebar, .userband, .startfoot, #betamark, #bg .hill { display: none; }
+.menu .entry .ico { display: none; }
+.menu .entry .lbl { pointer-events: none; }
+#betamark { position: fixed; right: 18px; bottom: 14px; z-index: 4; text-align: right; font: 11px Tahoma, sans-serif; color: #fff; text-shadow: 1px 1px 1px rgba(0,0,0,.7); pointer-events: none; }
+#betamark b { display: block; font-weight: bold; }
+.screen { --hero: none; }
+
+/* drop target hint, any theme */
+body.dropping #stage { outline: 3px dashed var(--green); outline-offset: -3px; }

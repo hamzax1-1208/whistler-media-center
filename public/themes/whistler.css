@@ -1,0 +1,150 @@
+/* Whistler Beta 2 (build 2462) — the Luna look as it stood in March 2001: bright blue
+   title bars, Explorer-style task panes on the left, white content on the right, Tahoma
+   everywhere except the bold Trebuchet caption, and the evaluation-copy stamp on the desktop. */
+
+body[data-theme="whistler"] {
+  --era: Tahoma, "Segoe UI", Verdana, sans-serif;
+  --cap: "Trebuchet MS", Trebuchet, sans-serif;
+  --luna1: #0058EE; --luna2: #3593FF; --luna3: #288EFF; --luna4: #127DFF; --luna5: #036FFC;
+  --hl: #316AC5;            /* Luna selection blue */
+  --pane1: #7BA2E7; --pane2: #6375D6;     /* task pane gradient */
+  --group: #D6DFF7; --grouphead1: #FFFFFF; --grouphead2: #C6D3F7; --grouptext: #215DC6;
+  --text: #000; --text-dim: #333; --text-faint: #555;
+  --slab: #FFFFFF; --slab-edge: #FFFFFF; --slab-hover: #E8F0FF;
+  --gel: linear-gradient(to bottom, #4B8CF0 0%, #3A7AE0 49%, #2A66CC 51%, #3573D8 100%);
+  --gel-edge: #9EC3FF; --green: #316AC5;
+  background: #3A6EA5;
+}
+/* Bliss, more or less: sky, a hill, some haze */
+body[data-theme="whistler"] #bg { background: linear-gradient(to bottom, #2C5FB0 0%, #5C93D8 35%, #A9CDEF 62%, #C9E1F5 66%); }
+body[data-theme="whistler"] #bg .streaks { opacity: .18; background: radial-gradient(ellipse 60% 20% at 30% 45%, #fff, transparent), radial-gradient(ellipse 50% 14% at 75% 52%, #fff, transparent); }
+body[data-theme="whistler"] #bg .hill { position: absolute; left: -10%; right: -10%; bottom: -30%; height: 70%; border-radius: 50% 50% 0 0 / 60% 60% 0 0; background: linear-gradient(to bottom, #7DBE3C 0%, #4E9A2F 40%, #2F6B1E 100%); }
+
+/* the stage is a window */
+body[data-theme="whistler"] #stage { background: #fff; border: 1px solid #0831D9; border-radius: 8px 8px 0 0; box-shadow: 0 6px 26px rgba(0,0,0,.45); overflow: hidden; }
+body[data-theme="whistler"] .screen { animation: none; }
+body[data-theme="whistler"] .titlebar {
+  display: flex; position: absolute; left: 0; top: 0; width: 1024px; height: 30px; align-items: center; padding: 0 6px 0 10px;
+  background: linear-gradient(to bottom, var(--luna1) 0%, var(--luna2) 8%, var(--luna3) 40%, var(--luna4) 88%, var(--luna5) 100%);
+  color: #fff; font: bold 14px var(--cap); text-shadow: 1px 1px 0 #0A246A; border-bottom: 1px solid #0831D9; z-index: 2;
+}
+body[data-theme="whistler"] .titlebar .tb-ico { width: 16px; height: 16px; margin-right: 6px; }
+body[data-theme="whistler"] .titlebar .tb-ico svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2; }
+body[data-theme="whistler"] .titlebar .tb-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-theme="whistler"] .titlebar .tb-btn {
+  width: 21px; height: 21px; margin-left: 2px; border: 1px solid #fff; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(to bottom, #3C81F3, #1C5FD9 60%, #2D6FE6); color: #fff; font: bold 12px Tahoma; text-shadow: none; cursor: pointer;
+}
+body[data-theme="whistler"] .titlebar .tb-btn.close { background: linear-gradient(to bottom, #E77E67, #C7472F 60%, #D65A42); }
+body[data-theme="whistler"] .titlebar .tb-btn:hover { filter: brightness(1.15); }
+
+/* undo the 2002 base geometry this theme does not share */
+body[data-theme="whistler"] .slab { border-radius: 0; }
+body[data-theme="whistler"] .tile { width: 150px; height: auto; padding: 0; background: transparent; border-radius: 0; display: block; }
+body[data-theme="whistler"] .tile.focus, body[data-theme="whistler"] .tile:hover:not(.focus) { background: transparent; }
+body[data-theme="whistler"] .tile .thumb { width: 150px; height: 112px; flex: none; }
+body[data-theme="whistler"] .tile .cap { font-weight: normal; line-height: 1.3; height: auto; margin: 3px 0 0; }
+body[data-theme="whistler"] .menu { height: auto; display: block; }
+body[data-theme="whistler"] .section { justify-content: flex-start; text-align: left; height: 26px; overflow: visible; }
+body[data-theme="whistler"] .rows .row { font-weight: normal; }
+body[data-theme="whistler"] .modes.dormant .mode:not(.focus) { background: transparent; }
+
+/* left task pane */
+body[data-theme="whistler"] .wm, body[data-theme="whistler"] .ghost { display: none; }
+body[data-theme="whistler"] .screen::before { content: ""; position: absolute; left: 0; top: 30px; width: 330px; height: 738px; background: linear-gradient(to bottom, var(--pane1), var(--pane2)); }
+body[data-theme="whistler"] .section { left: 24px; top: 52px; width: 282px; height: 26px; padding: 0 10px; display: flex; align-items: center; letter-spacing: 0; text-transform: none; font: bold 13px var(--era); color: var(--grouptext); background: linear-gradient(to right, var(--grouphead1), var(--grouphead2)); border-radius: 6px 6px 0 0; }
+body[data-theme="whistler"] .section::after { content: "\00AB"; margin-left: auto; font-weight: bold; color: var(--grouptext); }
+body[data-theme="whistler"] .modes { left: 24px; top: 78px; width: 282px; background: var(--group); padding: 6px 0 8px; border: 1px solid #fff; border-top: 0; }
+body[data-theme="whistler"] .modes .mode { height: 26px; width: auto; margin: 0 6px; padding-left: 30px; padding-right: 26px; font-size: 13px; background: transparent; border: 0; color: var(--grouptext); border-radius: 3px; }
+body[data-theme="whistler"] .modes .mode::before { content: ""; position: absolute; left: 10px; top: 7px; width: 12px; height: 12px; border-radius: 2px; background: linear-gradient(135deg, #7FB6F5, #2B6FD0); border: 1px solid #1F4FA0; }
+body[data-theme="whistler"] .rows .row .val { color: #000; }
+body[data-theme="whistler"] .rows .row.focus .val { color: #fff; }
+body[data-theme="whistler"] .modes .mode:hover { background: #E8F0FF; text-decoration: underline; }
+body[data-theme="whistler"] .modes .mode.focus, body[data-theme="whistler"] .modes .mode.focus:hover { background: var(--hl); color: #fff; font-weight: bold; text-shadow: none; }
+body[data-theme="whistler"] .modes .mode .dot { right: 10px; width: 8px; height: 8px; margin-top: -4px; background: #fff; border: 1px solid #7F9DB9; }
+body[data-theme="whistler"] .modes .mode .dot.on { background: radial-gradient(circle, #21A121 35%, #fff 40%); box-shadow: none; }
+body[data-theme="whistler"] .modes .mode.focus .dot { border-color: #fff; }
+
+/* content */
+body[data-theme="whistler"] .titleblock { left: 350px; top: 46px; width: 650px; }
+body[data-theme="whistler"] .titleblock .big { font: bold 22px var(--cap); color: #0A246A; text-transform: none; letter-spacing: 0; }
+body[data-theme="whistler"] .titleblock .small { font-size: 12px; color: #444; }
+body[data-theme="whistler"] .grid { left: 350px; top: 100px; width: 650px; height: 560px; grid-template-columns: repeat(4, 150px); column-gap: 16px; row-gap: 12px; }
+body[data-theme="whistler"] .tile .thumb { border: 1px solid #A0B8E4; background: #F4F7FC; padding: 2px; border-radius: 0; }
+body[data-theme="whistler"] .tile .thumb .glyph svg { stroke: #316AC5; opacity: .8; }
+body[data-theme="whistler"] .tile.focus .thumb { border-color: var(--hl); background: #E3EDFF; box-shadow: none; }
+body[data-theme="whistler"] .tile .cap { font-size: 12px; color: #000; padding: 1px 3px; }
+body[data-theme="whistler"] .tile.focus .cap { background: var(--hl); color: #fff; font-weight: normal; }
+body[data-theme="whistler"] .rows { left: 350px; top: 100px; width: 650px; height: 560px; }
+body[data-theme="whistler"] .rows .row { height: 24px; width: 650px; margin-bottom: 1px; font-size: 13px; background: transparent; border: 0; color: #000; }
+body[data-theme="whistler"] .rows .row:hover { background: #E8F0FF; }
+body[data-theme="whistler"] .rows .row.focus, body[data-theme="whistler"] .rows .row.focus:hover { background: var(--hl); color: #fff; font-weight: normal; text-shadow: none; }
+body[data-theme="whistler"] .rows .row .ico svg { width: 16px; height: 16px; stroke: #316AC5; }
+body[data-theme="whistler"] .rows .row.focus .ico svg { stroke: #fff; }
+body[data-theme="whistler"] .rows .row .sub { opacity: .6; }
+body[data-theme="whistler"] .rows .row .meta, body[data-theme="whistler"] .rows .row .val { font-size: 12px; }
+body[data-theme="whistler"] .rows .row .mark i { background: #21A121; }
+body[data-theme="whistler"] .paging { left: 700px; top: 700px; font: 12px var(--era); color: #000; }
+body[data-theme="whistler"] .paging .chev span { color: #316AC5; }
+body[data-theme="whistler"] .empty, body[data-theme="whistler"] .loading { left: 350px; top: 110px; width: 630px; font-size: 14px; color: #000; }
+body[data-theme="whistler"] .empty small { color: #444; }
+body[data-theme="whistler"] .status { left: 350px; top: 720px; font-size: 11px; color: #555; opacity: 1; }
+body[data-theme="whistler"] .about { left: 350px; top: 100px; width: 630px; font-size: 13px; color: #000; }
+body[data-theme="whistler"] .about h3 { font: bold 20px var(--cap); color: #0A246A; text-transform: none; }
+body[data-theme="whistler"] .about b { color: #0A246A; }
+
+/* start screen = the Luna start menu */
+body[data-theme="whistler"] .clock { left: 620px; top: 668px; width: 380px; text-align: right; }
+body[data-theme="whistler"] .clock .date { font-size: 13px; color: #333; }
+body[data-theme="whistler"] .clock .time { font-size: 20px; color: #0A246A; font-weight: bold; }
+body[data-theme="whistler"] .userband { display: flex; position: absolute; left: 350px; top: 60px; width: 420px; height: 64px; align-items: center; padding: 0 14px; gap: 12px; border-radius: 6px 6px 0 0;
+  background: linear-gradient(to bottom, #2E63C7, #3D7BE0 50%, #2A5BB8); color: #fff; font: bold 16px var(--cap); text-shadow: 1px 1px 0 #0A246A; }
+body[data-theme="whistler"] .userband .avatar { width: 44px; height: 44px; border: 2px solid #fff; border-radius: 3px; background: linear-gradient(135deg, #7DBE3C, #2F6B1E); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+body[data-theme="whistler"] .menu { left: 350px; top: 124px; width: 420px; background: #fff; border: 1px solid #0A246A; border-top: 0; padding: 6px 0; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+body[data-theme="whistler"] .menu .entry { height: 44px; width: 420px; margin: 0; padding-left: 60px; font: 14px var(--era); background: transparent; border: 0; color: #000; position: relative; }
+body[data-theme="whistler"] .menu .entry .ico { position: absolute; left: 12px; top: 7px; width: 30px; height: 30px; display: block; }
+body[data-theme="whistler"] .menu .entry .ico svg { width: 30px; height: 30px; stroke: #316AC5; fill: none; stroke-width: 1.6; }
+body[data-theme="whistler"] .menu .entry:hover { background: #E8F0FF; }
+body[data-theme="whistler"] .menu .entry.focus, body[data-theme="whistler"] .menu .entry.focus:hover { background: var(--hl); color: #fff; font-weight: bold; text-shadow: none; }
+body[data-theme="whistler"] .menu .entry.focus .ico svg { stroke: #fff; }
+body[data-theme="whistler"] .startfoot { display: flex; position: absolute; left: 350px; top: 372px; width: 420px; height: 34px; align-items: center; justify-content: flex-end; padding: 0 10px; gap: 10px; border-radius: 0 0 6px 6px;
+  background: linear-gradient(to bottom, #2E63C7, #3D7BE0 50%, #2A5BB8); color: #fff; font: 12px var(--era); }
+body[data-theme="whistler"] .startfoot span { display: flex; align-items: center; gap: 5px; }
+body[data-theme="whistler"] .startfoot i { width: 16px; height: 16px; border-radius: 3px; background: linear-gradient(#E77E67, #C7472F); border: 1px solid #fff; display: inline-block; }
+body[data-theme="whistler"] .startfoot i.log { background: linear-gradient(#5FBF4B, #3C8C34); }
+
+/* now playing */
+body[data-theme="whistler"] .np-art { left: 480px; top: 90px; border: 1px solid #A0B8E4; background: #F4F7FC; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+body[data-theme="whistler"] .np-art .glyph svg { stroke: #316AC5; }
+body[data-theme="whistler"] .np-track { left: 350px; top: 390px; width: 650px; }
+body[data-theme="whistler"] .np-track .t { font: bold 20px var(--cap); color: #0A246A; }
+body[data-theme="whistler"] .np-track .a { font-size: 13px; color: #444; }
+body[data-theme="whistler"] .np-spec { left: 350px; top: 470px; width: 650px; background: #000; border: 1px solid #7F9DB9; }
+body[data-theme="whistler"] .np-bar { left: 350px; top: 560px; width: 650px; background: #D6DFF7; }
+body[data-theme="whistler"] .np-bar i { background: var(--hl); }
+body[data-theme="whistler"] .np-time { left: 600px; top: 575px; width: 400px; font-size: 13px; color: #000; }
+body[data-theme="whistler"] .np-time b { color: #555; }
+
+/* chrome outside the window */
+body[data-theme="whistler"] #betamark { display: block; }
+body[data-theme="whistler"] #transport { border-color: #7F9DB9; }
+body[data-theme="whistler"] #inset { background: rgba(255,255,255,.85); border: 1px solid #7F9DB9; border-radius: 3px; }
+body[data-theme="whistler"] #inset .txt .t { color: #000; }
+body[data-theme="whistler"] #inset .txt .a { color: #444; }
+body[data-theme="whistler"] #inset canvas { filter: hue-rotate(160deg); }
+body[data-theme="whistler"] #toast { background: var(--hl); border-top-color: #9EC3FF; font-family: var(--era); }
+
+/* dialog and player menu in Luna */
+body[data-theme="whistler"] .dlg { background: #ECE9D8; border: 1px solid #0831D9; border-radius: 8px 8px 0 0; padding: 0 0 14px; color: #000; overflow: hidden; }
+body[data-theme="whistler"] .dlg .t { background: linear-gradient(to bottom, var(--luna1), var(--luna3) 40%, var(--luna5)); color: #fff; font: bold 14px var(--cap); text-transform: none; letter-spacing: 0; padding: 6px 10px; margin: 0 0 14px; text-shadow: 1px 1px 0 #0A246A; }
+body[data-theme="whistler"] .dlg .q { color: #000; font-size: 13px; padding: 0 16px; }
+body[data-theme="whistler"] .dlg .btns { padding: 0 16px; }
+body[data-theme="whistler"] .dlg .btn { height: 24px; min-width: 76px; font-size: 12px; background: linear-gradient(to bottom, #fff, #ECEBE5); border: 1px solid #003C74; border-radius: 3px; color: #000; }
+body[data-theme="whistler"] .dlg .btn.focus { background: linear-gradient(to bottom, #fff, #ECEBE5); box-shadow: inset 0 0 0 2px #B9D7FB; font-weight: normal; color: #000; text-shadow: none; }
+body[data-theme="whistler"] #pmenu { background: #fff; border: 1px solid #0A246A; box-shadow: 0 4px 14px rgba(0,0,0,.35); padding: 0 0 6px; }
+body[data-theme="whistler"] .pm-title { background: linear-gradient(to bottom, var(--luna1), var(--luna3) 40%, var(--luna5)); color: #fff; font: bold 14px var(--cap); text-transform: none; letter-spacing: 0; padding: 6px 12px; margin-bottom: 6px; }
+body[data-theme="whistler"] .pm-row { height: 28px; margin: 0; padding-left: 16px; font-size: 13px; background: transparent; border: 0; color: #000; }
+body[data-theme="whistler"] .pm-row .val { color: #444; }
+body[data-theme="whistler"] .pm-row.focus, body[data-theme="whistler"] .pm-row.focus:hover { background: var(--hl); color: #fff; font-weight: normal; text-shadow: none; }
+body[data-theme="whistler"] .pm-row.focus .val { color: #fff; }
+body[data-theme="whistler"] #osd-fill { background: var(--gel); }

@@ -1,0 +1,9 @@
+# Local-only material: Microsoft assets dumped from the MCE 2002 disc, server-mode state, sounds
+reference/
+data/
+public/sounds/*.wav
+node_modules/
+edgeprof*/
+*.log
+Thumbs.db
+.DS_Store

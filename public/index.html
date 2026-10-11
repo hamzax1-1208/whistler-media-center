@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Whistler Media Center</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="themes/whistler.css">
+<link rel="stylesheet" href="themes/netflix.css">
+</head>
+<body data-theme="2002">
+  <div id="bg"><div class="streaks"></div><div class="hill"></div></div>
+
+  <!-- The 2002 and Whistler themes lay out on the original 1024x768 canvas, scaled uniformly.
+       The Netflix theme lets it go fluid. -->
+  <div id="stage"></div>
+
+  <div id="transport" hidden></div>
+  <div id="inset" hidden></div>
+  <div id="toast" hidden></div>
+  <div id="betamark"><b>Whistler Media Center</b><span>Evaluation copy. Build 2462</span></div>
+
+  <div id="player" hidden>
+    <video id="video" playsinline></video>
+    <div id="osd">
+      <div class="osd-btns"><button id="osd-cc" title="Subtitles">CC</button><button id="osd-opt" title="Options (Up)">OPTIONS</button></div>
+      <div class="osd-title"><span id="osd-name"></span><span id="osd-sub"></span></div>
+      <div class="osd-bar"><div id="osd-buf"></div><div id="osd-fill"></div><div id="osd-knob"></div></div>
+      <div class="osd-times"><span id="osd-pos">0:00</span><span id="osd-scan"></span><span id="osd-dur">0:00</span></div>
+    </div>
+    <div id="pmenu" hidden></div>
+    <div id="osd-legend" hidden>
+      <div class="lg"><b>&uarr;</b> options menu</div><div class="lg"><b>Enter</b> pause</div>
+      <div class="lg"><b>&larr; &rarr;</b> 10 s &middot; hold to scan</div><div class="lg"><b>, .</b> chapter / 90 s</div>
+      <div class="lg"><b>N / P</b> next / previous</div><div class="lg"><b>S</b> subtitles on / off</div>
+      <div class="lg"><b>+ &minus;</b> volume &middot; wheel too</div><div class="lg"><b>F</b> full screen</div>
+      <div class="lg"><b>Backspace</b> stop</div>
+    </div>
+  </div>
+
+  <div id="photo" hidden>
+    <div id="photo-a" class="photo-layer"></div>
+    <div id="photo-b" class="photo-layer"></div>
+    <div id="photo-cap"><span id="photo-name"></span><span id="photo-meta"></span></div>
+  </div>
+
+  <div id="dialog" hidden></div>
+
+  <audio id="music" preload="auto"></audio>
+  <script src="parsers.js"></script>
+  <script src="source.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
