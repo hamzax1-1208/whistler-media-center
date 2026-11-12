@@ -1,0 +1,740 @@
+/* Whistler Beta 2 theme (build 2462) — the Luna look as it stood in March 2001: bright blue
+   title bars, Explorer-style task panes on the left, white content on the right, Tahoma
+   everywhere except the bold Trebuchet caption, and the evaluation-copy stamp on the desktop.
+   Every rule is scoped to body[data-theme='whistler'], so the file does nothing in other themes. */
+@layer themes {
+  /* ---------------------------------------------------------------- variables and backdrop */
+
+  body[data-theme='whistler'] {
+    --era: Tahoma, 'Segoe UI', Verdana, sans-serif;
+    --cap: 'Trebuchet MS', Trebuchet, sans-serif;
+    --luna1: #0058ee;
+    --luna2: #3593ff;
+    --luna3: #288eff;
+    --luna4: #127dff;
+    --luna5: #036ffc;
+    --hl: #316ac5; /* Luna selection blue */
+    --pane1: #7ba2e7;
+    --pane2: #6375d6; /* task pane gradient */
+    --group: #d6dff7;
+    --grouphead1: #ffffff;
+    --grouphead2: #c6d3f7;
+    --grouptext: #215dc6;
+    --text: #000;
+    --text-dim: #333;
+    --text-faint: #555;
+    --slab: #ffffff;
+    --slab-edge: #ffffff;
+    --slab-hover: #e8f0ff;
+    --gel: linear-gradient(to bottom, #4b8cf0 0%, #3a7ae0 49%, #2a66cc 51%, #3573d8 100%);
+    --gel-edge: #9ec3ff;
+    --green: #316ac5;
+    background: #3a6ea5;
+  }
+  /* Bliss, more or less: sky, a hill, some haze */
+  body[data-theme='whistler'] #backdrop {
+    background: linear-gradient(to bottom, #2c5fb0 0%, #5c93d8 35%, #a9cdef 62%, #c9e1f5 66%);
+  }
+  body[data-theme='whistler'] #backdrop .backdrop-streaks {
+    opacity: 0.18;
+    background:
+      radial-gradient(ellipse 60% 20% at 30% 45%, #fff, transparent),
+      radial-gradient(ellipse 50% 14% at 75% 52%, #fff, transparent);
+  }
+  body[data-theme='whistler'] #backdrop .backdrop-hill {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    bottom: -30%;
+    height: 70%;
+    border-radius: 50% 50% 0 0 / 60% 60% 0 0;
+    background: linear-gradient(to bottom, #7dbe3c 0%, #4e9a2f 40%, #2f6b1e 100%);
+  }
+
+  /* the stage is a window */
+  body[data-theme='whistler'] #stage {
+    background: #fff;
+    border: 1px solid #0831d9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+  }
+  body[data-theme='whistler'] .screen {
+    animation: none;
+  }
+  body[data-theme='whistler'] #site-header {
+    display: flex;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1024px;
+    height: 30px;
+    align-items: center;
+    padding: 0 6px 0 10px;
+    background: linear-gradient(
+      to bottom,
+      var(--luna1) 0%,
+      var(--luna2) 8%,
+      var(--luna3) 40%,
+      var(--luna4) 88%,
+      var(--luna5) 100%
+    );
+    color: #fff;
+    font: bold 14px var(--cap);
+    text-shadow: 1px 1px 0 #0a246a;
+    border-bottom: 1px solid #0831d9;
+    z-index: 2;
+  }
+  body[data-theme='whistler'] #site-header .site-logo {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+  }
+  /* the back button belongs to the phone layout; a Luna title bar has none */
+  body[data-theme='whistler'] #back-button {
+    display: none;
+  }
+  body[data-theme='whistler'] #site-header .site-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  body[data-theme='whistler'] #site-header .window-button {
+    width: 21px;
+    height: 21px;
+    margin-left: 2px;
+    border: 1px solid #fff;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(to bottom, #3c81f3, #1c5fd9 60%, #2d6fe6);
+    color: #fff;
+    font: bold 12px Tahoma;
+    text-shadow: none;
+    cursor: pointer;
+  }
+  body[data-theme='whistler'] #site-header .window-button.close-button {
+    background: linear-gradient(to bottom, #e77e67, #c7472f 60%, #d65a42);
+  }
+  body[data-theme='whistler'] #site-header .window-button:hover {
+    filter: brightness(1.15);
+  }
+
+  /* undo the 2002 base geometry this theme does not share */
+  body[data-theme='whistler'] .slab {
+    border-radius: 0;
+  }
+  body[data-theme='whistler'] .tile {
+    width: 150px;
+    height: auto;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    display: block;
+  }
+  body[data-theme='whistler'] .tile.is-focused,
+  body[data-theme='whistler'] .tile:hover:not(.is-focused) {
+    background: transparent;
+  }
+  body[data-theme='whistler'] .tile .tile-thumb {
+    width: 150px;
+    height: 112px;
+    flex: none;
+  }
+  body[data-theme='whistler'] .tile .tile-caption {
+    font-weight: normal;
+    line-height: 1.3;
+    height: auto;
+    margin: 3px 0 0;
+  }
+  body[data-theme='whistler'] .start-menu {
+    height: auto;
+    display: block;
+  }
+  body[data-theme='whistler'] .section-label {
+    justify-content: flex-start;
+    text-align: left;
+    height: 26px;
+    overflow: visible;
+  }
+  body[data-theme='whistler'] .row-list .row-item {
+    font-weight: normal;
+  }
+  body[data-theme='whistler'] .mode-list.is-dormant .mode-item:not(.is-focused) {
+    background: transparent;
+  }
+
+  /* left task pane */
+  body[data-theme='whistler'] .watermark,
+  body[data-theme='whistler'] .home-ghost {
+    display: none;
+  }
+  body[data-theme='whistler'] .screen::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 30px;
+    width: 330px;
+    height: 738px;
+    background: linear-gradient(to bottom, var(--pane1), var(--pane2));
+  }
+  body[data-theme='whistler'] .section-label {
+    left: 24px;
+    top: 52px;
+    width: 282px;
+    height: 26px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    letter-spacing: 0;
+    text-transform: none;
+    font: bold 13px var(--era);
+    color: var(--grouptext);
+    background: linear-gradient(to right, var(--grouphead1), var(--grouphead2));
+    border-radius: 6px 6px 0 0;
+  }
+  body[data-theme='whistler'] .section-label::after {
+    content: '\00AB';
+    margin-left: auto;
+    font-weight: bold;
+    color: var(--grouptext);
+  }
+  body[data-theme='whistler'] .mode-list {
+    left: 24px;
+    top: 78px;
+    width: 282px;
+    background: var(--group);
+    padding: 6px 0 8px;
+    border: 1px solid #fff;
+    border-top: 0;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item {
+    height: 26px;
+    width: auto;
+    margin: 0 6px;
+    padding-left: 30px;
+    padding-right: 26px;
+    font-size: 13px;
+    background: transparent;
+    border: 0;
+    color: var(--grouptext);
+    border-radius: 3px;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 7px;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: linear-gradient(135deg, #7fb6f5, #2b6fd0);
+    border: 1px solid #1f4fa0;
+  }
+  body[data-theme='whistler'] .row-list .row-item .row-value {
+    color: #000;
+  }
+  body[data-theme='whistler'] .row-list .row-item.is-focused .row-value {
+    color: #fff;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item:hover {
+    background: #e8f0ff;
+    text-decoration: underline;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item.is-focused,
+  body[data-theme='whistler'] .mode-list .mode-item.is-focused:hover {
+    background: var(--hl);
+    color: #fff;
+    font-weight: bold;
+    text-shadow: none;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item .mode-dot {
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    margin-top: -4px;
+    background: #fff;
+    border: 1px solid #7f9db9;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item .mode-dot.is-on {
+    background: radial-gradient(circle, #21a121 35%, #fff 40%);
+    box-shadow: none;
+  }
+  body[data-theme='whistler'] .mode-list .mode-item.is-focused .mode-dot {
+    border-color: #fff;
+  }
+
+  /* content */
+  body[data-theme='whistler'] .title-block {
+    left: 350px;
+    top: 46px;
+    width: 650px;
+  }
+  body[data-theme='whistler'] .title-block .title-main {
+    font: bold 22px var(--cap);
+    color: #0a246a;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  body[data-theme='whistler'] .title-block .title-sub {
+    font-size: 12px;
+    color: #444;
+  }
+  body[data-theme='whistler'] .tile-grid {
+    left: 350px;
+    top: 100px;
+    width: 650px;
+    height: 560px;
+    grid-template-columns: repeat(4, 150px);
+    column-gap: 16px;
+    row-gap: 12px;
+  }
+  body[data-theme='whistler'] .tile .tile-thumb {
+    border: 1px solid #a0b8e4;
+    background: #f4f7fc;
+    padding: 2px;
+    border-radius: 0;
+  }
+  body[data-theme='whistler'] .tile .tile-thumb .tile-glyph svg {
+    stroke: #316ac5;
+    opacity: 0.8;
+  }
+  body[data-theme='whistler'] .tile.is-focused .tile-thumb {
+    border-color: var(--hl);
+    background: #e3edff;
+    box-shadow: none;
+  }
+  body[data-theme='whistler'] .tile .tile-caption {
+    font-size: 12px;
+    color: #000;
+    padding: 1px 3px;
+  }
+  body[data-theme='whistler'] .tile.is-focused .tile-caption {
+    background: var(--hl);
+    color: #fff;
+    font-weight: normal;
+  }
+  body[data-theme='whistler'] .row-list {
+    left: 350px;
+    top: 100px;
+    width: 650px;
+    height: 560px;
+  }
+  body[data-theme='whistler'] .row-list .row-item {
+    height: 24px;
+    width: 650px;
+    margin-bottom: 1px;
+    font-size: 13px;
+    background: transparent;
+    border: 0;
+    color: #000;
+  }
+  body[data-theme='whistler'] .row-list .row-item:hover {
+    background: #e8f0ff;
+  }
+  body[data-theme='whistler'] .row-list .row-item.is-focused,
+  body[data-theme='whistler'] .row-list .row-item.is-focused:hover {
+    background: var(--hl);
+    color: #fff;
+    font-weight: normal;
+    text-shadow: none;
+  }
+  body[data-theme='whistler'] .row-list .row-item .row-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: #316ac5;
+  }
+  body[data-theme='whistler'] .row-list .row-item.is-focused .row-icon svg {
+    stroke: #fff;
+  }
+  body[data-theme='whistler'] .row-list .row-item .row-sub {
+    opacity: 0.6;
+  }
+  body[data-theme='whistler'] .row-list .row-item .row-meta,
+  body[data-theme='whistler'] .row-list .row-item .row-value {
+    font-size: 12px;
+  }
+  body[data-theme='whistler'] .row-list .row-item .row-mark .row-mark-dot {
+    background: #21a121;
+  }
+  body[data-theme='whistler'] .paging {
+    left: 700px;
+    top: 700px;
+    font: 12px var(--era);
+    color: #000;
+  }
+  body[data-theme='whistler'] .paging .paging-arrows button {
+    color: #316ac5;
+  }
+  body[data-theme='whistler'] .empty-note,
+  body[data-theme='whistler'] .loading-note {
+    left: 350px;
+    top: 110px;
+    width: 630px;
+    font-size: 14px;
+    color: #000;
+  }
+  body[data-theme='whistler'] .empty-note .empty-hint {
+    color: #444;
+  }
+  body[data-theme='whistler'] .status-line {
+    left: 350px;
+    top: 720px;
+    font-size: 11px;
+    color: #555;
+    opacity: 1;
+  }
+  body[data-theme='whistler'] .about {
+    left: 350px;
+    top: 100px;
+    width: 630px;
+    font-size: 13px;
+    color: #000;
+  }
+  body[data-theme='whistler'] .about h2 {
+    font: bold 20px var(--cap);
+    color: #0a246a;
+    text-transform: none;
+  }
+  body[data-theme='whistler'] .about strong {
+    color: #0a246a;
+  }
+
+  /* start screen = the Luna start menu */
+  body[data-theme='whistler'] .clock {
+    left: 620px;
+    top: 668px;
+    width: 380px;
+    text-align: right;
+  }
+  body[data-theme='whistler'] .clock .clock-date {
+    font-size: 13px;
+    color: #333;
+  }
+  body[data-theme='whistler'] .clock .clock-time {
+    font-size: 20px;
+    color: #0a246a;
+    font-weight: bold;
+  }
+  body[data-theme='whistler'] .user-band {
+    display: flex;
+    position: absolute;
+    left: 350px;
+    top: 60px;
+    width: 420px;
+    height: 64px;
+    align-items: center;
+    padding: 0 14px;
+    gap: 12px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(to bottom, #2e63c7, #3d7be0 50%, #2a5bb8);
+    color: #fff;
+    font: bold 16px var(--cap);
+    text-shadow: 1px 1px 0 #0a246a;
+  }
+  body[data-theme='whistler'] .user-band .user-avatar {
+    width: 44px;
+    height: 44px;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: linear-gradient(135deg, #7dbe3c, #2f6b1e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  body[data-theme='whistler'] .start-menu {
+    left: 350px;
+    top: 124px;
+    width: 420px;
+    background: #fff;
+    border: 1px solid #0a246a;
+    border-top: 0;
+    padding: 6px 0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  body[data-theme='whistler'] .start-menu .start-entry {
+    height: 44px;
+    width: 420px;
+    margin: 0;
+    padding-left: 60px;
+    font: 14px var(--era);
+    background: transparent;
+    border: 0;
+    color: #000;
+    position: relative;
+  }
+  body[data-theme='whistler'] .start-menu .start-entry .start-entry-icon {
+    position: absolute;
+    left: 12px;
+    top: 7px;
+    width: 30px;
+    height: 30px;
+    display: block;
+  }
+  body[data-theme='whistler'] .start-menu .start-entry .start-entry-icon svg {
+    width: 30px;
+    height: 30px;
+    stroke: #316ac5;
+    fill: none;
+    stroke-width: 1.6;
+  }
+  body[data-theme='whistler'] .start-menu .start-entry:hover {
+    background: #e8f0ff;
+  }
+  body[data-theme='whistler'] .start-menu .start-entry.is-focused,
+  body[data-theme='whistler'] .start-menu .start-entry.is-focused:hover {
+    background: var(--hl);
+    color: #fff;
+    font-weight: bold;
+    text-shadow: none;
+  }
+  body[data-theme='whistler'] .start-menu .start-entry.is-focused .start-entry-icon svg {
+    stroke: #fff;
+  }
+  body[data-theme='whistler'] .start-footer {
+    display: flex;
+    position: absolute;
+    left: 350px;
+    top: 372px;
+    width: 420px;
+    height: 34px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 10px;
+    gap: 10px;
+    border-radius: 0 0 6px 6px;
+    background: linear-gradient(to bottom, #2e63c7, #3d7be0 50%, #2a5bb8);
+    color: #fff;
+    font: 12px var(--era);
+  }
+  body[data-theme='whistler'] .start-footer > span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  body[data-theme='whistler'] .start-footer .power-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: linear-gradient(#e77e67, #c7472f);
+    border: 1px solid #fff;
+    display: inline-block;
+  }
+  body[data-theme='whistler'] .start-footer .log-off-icon {
+    background: linear-gradient(#5fbf4b, #3c8c34);
+  }
+
+  /* now playing */
+  body[data-theme='whistler'] .now-playing-art {
+    left: 480px;
+    top: 90px;
+    border: 1px solid #a0b8e4;
+    background: #f4f7fc;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  }
+  body[data-theme='whistler'] .now-playing-art .now-playing-glyph svg {
+    stroke: #316ac5;
+  }
+  body[data-theme='whistler'] .now-playing-track {
+    left: 350px;
+    top: 390px;
+    width: 650px;
+  }
+  body[data-theme='whistler'] .now-playing-track .track-title {
+    font: bold 20px var(--cap);
+    color: #0a246a;
+  }
+  body[data-theme='whistler'] .now-playing-track .track-artist {
+    font-size: 13px;
+    color: #444;
+  }
+  body[data-theme='whistler'] .now-playing-spectrum {
+    left: 350px;
+    top: 470px;
+    width: 650px;
+    background: #000;
+    border: 1px solid #7f9db9;
+  }
+  body[data-theme='whistler'] .now-playing-bar {
+    left: 350px;
+    top: 560px;
+    width: 650px;
+    background: #d6dff7;
+  }
+  body[data-theme='whistler'] .now-playing-bar .now-playing-fill {
+    background: var(--hl);
+  }
+  body[data-theme='whistler'] .now-playing-time {
+    left: 600px;
+    top: 575px;
+    width: 400px;
+    font-size: 13px;
+    color: #000;
+  }
+  body[data-theme='whistler'] .now-playing-time .time-label {
+    color: #555;
+  }
+
+  /* chrome outside the window */
+  body[data-theme='whistler'] #beta-mark {
+    display: block;
+  }
+  body[data-theme='whistler'] #transport {
+    border-color: #7f9db9;
+  }
+  body[data-theme='whistler'] #now-playing-inset {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid #7f9db9;
+    border-radius: 3px;
+  }
+  body[data-theme='whistler'] #now-playing-inset .inset-text .inset-title {
+    color: #000;
+  }
+  body[data-theme='whistler'] #now-playing-inset .inset-text .inset-artist {
+    color: #444;
+  }
+  body[data-theme='whistler'] #now-playing-inset canvas {
+    filter: hue-rotate(160deg);
+  }
+  body[data-theme='whistler'] #toast {
+    background: var(--hl);
+    border-top-color: #9ec3ff;
+    font-family: var(--era);
+  }
+
+  /* dialog and player menu in Luna */
+  body[data-theme='whistler'] .dialog-box {
+    background: #ece9d8;
+    border: 1px solid #0831d9;
+    border-radius: 8px 8px 0 0;
+    padding: 0 0 14px;
+    color: #000;
+    overflow: hidden;
+  }
+  body[data-theme='whistler'] .dialog-box .dialog-title {
+    background: linear-gradient(to bottom, var(--luna1), var(--luna3) 40%, var(--luna5));
+    color: #fff;
+    font: bold 14px var(--cap);
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 6px 10px;
+    margin: 0 0 14px;
+    text-shadow: 1px 1px 0 #0a246a;
+  }
+  body[data-theme='whistler'] .dialog-box .dialog-text {
+    color: #000;
+    font-size: 13px;
+    padding: 0 16px;
+  }
+  body[data-theme='whistler'] .dialog-box .dialog-buttons {
+    padding: 0 16px;
+  }
+  body[data-theme='whistler'] .dialog-box .dialog-button {
+    height: 24px;
+    min-width: 76px;
+    font-size: 12px;
+    background: linear-gradient(to bottom, #fff, #ecebe5);
+    border: 1px solid #003c74;
+    border-radius: 3px;
+    color: #000;
+  }
+  body[data-theme='whistler'] .dialog-box .dialog-button.is-focused {
+    background: linear-gradient(to bottom, #fff, #ecebe5);
+    box-shadow: inset 0 0 0 2px #b9d7fb;
+    font-weight: normal;
+    color: #000;
+    text-shadow: none;
+  }
+  /* Luna form controls: light fields on the beige dialog */
+  body[data-theme='whistler'] .form-panel {
+    color-scheme: light;
+  }
+  body[data-theme='whistler'] .form-panel .form-row,
+  body[data-theme='whistler'] .form-panel .form-buttons {
+    margin-left: 16px;
+    margin-right: 16px;
+    font-size: 13px;
+  }
+  body[data-theme='whistler'] .form-panel input[type='text'],
+  body[data-theme='whistler'] .form-panel input[type='number'],
+  body[data-theme='whistler'] .form-panel input[type='search'],
+  body[data-theme='whistler'] .form-panel select {
+    height: 24px;
+    padding: 0 4px;
+    border: 1px solid #7f9db9;
+    border-radius: 0;
+    background: #fff;
+    color: #000;
+    font-size: 13px;
+  }
+  body[data-theme='whistler'] .form-panel select option {
+    background: #fff;
+    color: #000;
+  }
+  body[data-theme='whistler'] .form-panel input::placeholder {
+    color: #8a8a8a;
+  }
+  body[data-theme='whistler'] .form-panel .field-error {
+    font-size: 12px;
+    color: #b3261e;
+  }
+  body[data-theme='whistler'] .form-panel .is-invalid {
+    border-color: #b3261e;
+  }
+  body[data-theme='whistler'] .form-panel output {
+    font-size: 12px;
+  }
+  body[data-theme='whistler'] .key-table th,
+  body[data-theme='whistler'] .key-table td {
+    border-bottom-color: #d6dff7;
+  }
+  body[data-theme='whistler'] .key-table tbody th {
+    color: #0a246a;
+  }
+  body[data-theme='whistler'] #key-legend tbody th {
+    color: #9ec3ff;
+  }
+  body[data-theme='whistler'] #player-menu {
+    background: #fff;
+    border: 1px solid #0a246a;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    padding: 0 0 6px;
+  }
+  body[data-theme='whistler'] .player-menu-title {
+    background: linear-gradient(to bottom, var(--luna1), var(--luna3) 40%, var(--luna5));
+    color: #fff;
+    font: bold 14px var(--cap);
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 6px 12px;
+    margin-bottom: 6px;
+  }
+  body[data-theme='whistler'] .player-menu-item {
+    height: 28px;
+    margin: 0;
+    padding-left: 16px;
+    font-size: 13px;
+    background: transparent;
+    border: 0;
+    color: #000;
+  }
+  body[data-theme='whistler'] .player-menu-item .player-menu-value {
+    color: #444;
+  }
+  body[data-theme='whistler'] .player-menu-item.is-focused,
+  body[data-theme='whistler'] .player-menu-item.is-focused:hover {
+    background: var(--hl);
+    color: #fff;
+    font-weight: normal;
+    text-shadow: none;
+  }
+  body[data-theme='whistler'] .player-menu-item.is-focused .player-menu-value {
+    color: #fff;
+  }
+  body[data-theme='whistler'] #osd-fill {
+    background: var(--gel);
+  }
+}

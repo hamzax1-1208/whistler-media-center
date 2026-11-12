@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Whistler Media Center</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Windows XP Media Center Edition 2002 in a browser tab. Plays the videos, music and pictures in your own folders; nothing to install."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#143459" />
+    <link rel="icon" href="assets/images/icon.svg" type="image/svg+xml" />
+
+    <!-- Styles: the base look (Media Center 2002), two alternative themes, then the small-screen layout -->
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/themes/whistler.css" />
+    <link rel="stylesheet" href="css/themes/netflix.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+  </head>
+
+  <body data-theme="2002">
+    <!-- Shown only when JavaScript is switched off -->
+    <noscript>
+      <p class="noscript-note">
+        Whistler Media Center needs JavaScript to read your folders and play your files.
+      </p>
+    </noscript>
+
+    <!-- Backdrop: purely decorative, every theme paints it differently -->
+    <div id="backdrop" aria-hidden="true">
+      <div class="backdrop-streaks"></div>
+      <div class="backdrop-hill"></div>
+    </div>
+
+    <!-- Stage: a 1024x768 canvas scaled to the window (fluid on phones and in the Netflix theme) -->
+    <div id="stage">
+      <!-- Site header: the window title bar in the Whistler theme, the app bar on phones -->
+      <header id="site-header">
+        <button type="button" id="back-button" class="header-button" aria-label="Back">
+          <svg class="icon" aria-hidden="true"><use href="#icon-back"></use></svg>
+        </button>
+        <img
+          class="site-logo"
+          src="assets/images/icon.svg"
+          alt="Whistler Media Center logo"
+          width="16"
+          height="16"
+        />
+        <span class="site-title">Whistler Media Center</span>
+        <button type="button" id="minimize-button" class="window-button" aria-label="Minimize">
+          _
+        </button>
+        <button type="button" id="maximize-button" class="window-button" aria-label="Full screen">
+          &#9633;
+        </button>
+        <button
+          type="button"
+          id="close-button"
+          class="window-button close-button"
+          aria-label="Close"
+        >
+          &times;
+        </button>
+      </header>
+
+      <!-- Main content: the current screen is stamped here from the templates further down -->
+      <main id="screen-host"></main>
+    </div>
+
+    <!-- Site footer: the music controls that stay on screen while you browse -->
+    <footer id="site-footer">
+      <!-- Transport pill: previous, next, play / pause, stop, volume -->
+      <div id="transport" role="toolbar" aria-label="Music controls" hidden>
+        <span class="transport-label">CH</span>
+        <button
+          type="button"
+          id="transport-previous"
+          class="transport-button"
+          title="Previous"
+          aria-label="Previous track"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#icon-previous"></use></svg>
+        </button>
+        <button
+          type="button"
+          id="transport-next"
+          class="transport-button"
+          title="Next"
+          aria-label="Next track"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#icon-next"></use></svg>
+        </button>
+        <span class="transport-separator"></span>
+        <button
+          type="button"
+          id="transport-play"
+          class="transport-button"
+          title="Play / pause"
+          aria-label="Play or pause"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#icon-pause"></use></svg>
+        </button>
+        <button
+          type="button"
+          id="transport-stop"
+          class="transport-button"
+          title="Stop"
+          aria-label="Stop"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#icon-stop"></use></svg>
+        </button>
+        <button
+          type="button"
+          id="transport-record"
+          class="transport-button record-button"
+          title="Record (there is nothing to record)"
+          aria-label="Record"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#icon-record"></use></svg>
+        </button>
+        <span class="transport-separator"></span>
+        <button
+          type="button"
+          id="transport-mute"
+          class="transport-button"
+          title="Mute"
+          aria-label="Mute"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#icon-mute"></use></svg>
+        </button>
+        <span class="transport-label">VOL</span>
+        <button
+          type="button"
+          id="transport-volume-down"
+          class="transport-button"
+          title="Volume down"
+          aria-label="Volume down"
+        >
+          &minus;
+        </button>
+        <button
+          type="button"
+          id="transport-volume-up"
+          class="transport-button"
+          title="Volume up"
+          aria-label="Volume up"
+        >
+          +
+        </button>
+      </div>
+
+      <!-- Now-playing inset: the current song, shown on every screen except the now-playing one -->
+      <aside id="now-playing-inset" aria-label="Now playing" hidden>
+        <figure class="inset-art">
+          <img id="inset-cover" alt="" width="42" height="42" hidden />
+        </figure>
+        <p class="inset-text">
+          <span id="inset-title" class="inset-title"></span>
+          <span id="inset-artist" class="inset-artist"></span>
+        </p>
+        <canvas id="inset-spectrum" width="40" height="30"></canvas>
+      </aside>
+
+      <!-- Desktop stamp of the Whistler theme -->
+      <p id="beta-mark">
+        <strong>Whistler Media Center</strong><span>Evaluation copy. Build 2462</span>
+      </p>
+    </footer>
+
+    <!-- Video player: a full-screen layer above the stage -->
+    <section id="player" aria-label="Video player" hidden>
+      <video id="video" playsinline></video>
+
+      <!-- On-screen display: buttons, title, progress bar, times -->
+      <div id="osd">
+        <div class="osd-buttons">
+          <button type="button" id="osd-subtitles-button" title="Subtitles (S)">CC</button>
+          <button type="button" id="osd-options-button" title="Options (Up)">OPTIONS</button>
+          <button type="button" id="osd-close-button" title="Stop (Backspace)">STOP</button>
+        </div>
+        <h2 class="osd-title">
+          <span id="osd-name"></span>
+          <span id="osd-series"></span>
+        </h2>
+        <div
+          class="osd-bar"
+          role="progressbar"
+          aria-label="Playback position"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div id="osd-buffer"></div>
+          <div id="osd-fill"></div>
+          <div id="osd-knob"></div>
+        </div>
+        <p class="osd-times">
+          <time id="osd-position">0:00</time>
+          <span id="osd-scan"></span>
+          <time id="osd-duration">0:00</time>
+        </p>
+      </div>
+
+      <!-- Options menu: subtitles, chapters, speed, picture -->
+      <nav id="player-menu" aria-label="Player options" hidden>
+        <h2 id="player-menu-title" class="player-menu-title"></h2>
+        <ul id="player-menu-list" class="player-menu-list"></ul>
+      </nav>
+
+      <!-- Key legend (H) -->
+      <table id="key-legend" hidden>
+        <caption>
+          Player keys
+        </caption>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Key</th>
+            <th scope="col">What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">&uarr;</th>
+            <td>options menu</td>
+          </tr>
+          <tr>
+            <th scope="row">Enter</th>
+            <td>pause</td>
+          </tr>
+          <tr>
+            <th scope="row">&larr; &rarr;</th>
+            <td>10 s &middot; hold to scan</td>
+          </tr>
+          <tr>
+            <th scope="row">, .</th>
+            <td>chapter / 90 s</td>
+          </tr>
+          <tr>
+            <th scope="row">N / P</th>
+            <td>next / previous</td>
+          </tr>
+          <tr>
+            <th scope="row">S</th>
+            <td>subtitles on / off</td>
+          </tr>
+          <tr>
+            <th scope="row">+ &minus;</th>
+            <td>volume &middot; wheel too</td>
+          </tr>
+          <tr>
+            <th scope="row">M</th>
+            <td>mute</td>
+          </tr>
+          <tr>
+            <th scope="row">F</th>
+            <td>full screen</td>
+          </tr>
+          <tr>
+            <th scope="row">Backspace</th>
+            <td>stop</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Photo viewer and slide show: two stacked images that cross-fade -->
+    <section id="photo-viewer" aria-label="Photo viewer" hidden>
+      <figure class="photo-frame">
+        <img id="photo-layer-a" class="photo-layer" alt="" />
+        <img id="photo-layer-b" class="photo-layer" alt="" />
+        <figcaption id="photo-caption">
+          <span id="photo-name"></span>
+          <span id="photo-meta"></span>
+        </figcaption>
+      </figure>
+      <button type="button" id="photo-close-button" aria-label="Close the photo viewer">
+        &times;
+      </button>
+    </section>
+
+    <!-- Message box: questions and errors, answered with the arrow keys, Enter or a click -->
+    <div id="dialog-overlay" hidden>
+      <section
+        class="dialog-box"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        aria-describedby="dialog-text"
+      >
+        <h2 id="dialog-title" class="dialog-title"></h2>
+        <p id="dialog-text" class="dialog-text"></p>
+        <div id="dialog-buttons" class="dialog-buttons"></div>
+      </section>
+    </div>
+
+    <!-- Forms. The validation rules live in the attributes (required, min, max, minlength...);
+         js/forms.js reads them through the Constraint Validation API and shows the message under the field. -->
+    <div id="form-overlay" hidden>
+      <!-- Profile and preferences: opened from Settings › General -->
+      <form
+        id="profile-form"
+        class="dialog-box form-panel"
+        aria-labelledby="profile-form-title"
+        novalidate
+        hidden
+      >
+        <h2 id="profile-form-title" class="dialog-title">Profile and preferences</h2>
+
+        <p class="form-row">
+          <label for="display-name">Display name</label>
+          <input
+            type="text"
+            id="display-name"
+            name="displayName"
+            required
+            minlength="2"
+            maxlength="20"
+            placeholder="e.g. Hamza"
+            autocomplete="nickname"
+            aria-describedby="display-name-error"
+          />
+          <small id="display-name-error" class="field-error" aria-live="polite"></small>
+        </p>
+
+        <p class="form-row">
+          <label for="slideshow-seconds">Slide show interval (seconds)</label>
+          <input
+            type="number"
+            id="slideshow-seconds"
+            name="slideshowSeconds"
+            required
+            min="2"
+            max="60"
+            step="1"
+            placeholder="5"
+            inputmode="numeric"
+            aria-describedby="slideshow-seconds-error"
+          />
+          <small id="slideshow-seconds-error" class="field-error" aria-live="polite"></small>
+        </p>
+
+        <p class="form-row">
+          <label for="start-volume">Starting volume</label>
+          <input
+            type="range"
+            id="start-volume"
+            name="startVolume"
+            min="0"
+            max="100"
+            step="5"
+            value="100"
+          />
+          <output id="start-volume-output" for="start-volume">100%</output>
+        </p>
+
+        <p class="form-row">
+          <label for="subtitle-language">Preferred subtitle language</label>
+          <select id="subtitle-language" name="subtitleLanguage" required>
+            <option value="eng">English</option>
+            <option value="tur">Turkish</option>
+            <option value="jpn">Japanese</option>
+            <option value="spa">Spanish</option>
+            <option value="ger">German</option>
+            <option value="fre">French</option>
+            <option value="por">Portuguese</option>
+            <option value="ita">Italian</option>
+            <option value="rus">Russian</option>
+            <option value="ara">Arabic</option>
+            <option value="kor">Korean</option>
+            <option value="chi">Chinese</option>
+            <option value="pol">Polish</option>
+            <option value="dut">Dutch</option>
+          </select>
+        </p>
+
+        <p class="form-row form-row-inline">
+          <input type="checkbox" id="clock-24-hour" name="clock24Hour" />
+          <label for="clock-24-hour">Use the 24-hour clock</label>
+        </p>
+
+        <p class="form-buttons">
+          <button type="submit" class="slab dialog-button is-focused">Save</button>
+          <button type="button" class="slab dialog-button" data-action="cancel">Cancel</button>
+        </p>
+      </form>
+
+      <!-- Search: filters the list on the current screen ("/" or the Search command) -->
+      <form
+        id="search-form"
+        class="dialog-box form-panel"
+        role="search"
+        aria-labelledby="search-form-title"
+        novalidate
+        hidden
+      >
+        <h2 id="search-form-title" class="dialog-title">Search</h2>
+
+        <p class="form-row">
+          <label for="search-query">Find in this list</label>
+          <input
+            type="search"
+            id="search-query"
+            name="query"
+            required
+            minlength="2"
+            maxlength="60"
+            placeholder="Part of a title, an artist or a file name"
+            autocomplete="off"
+            aria-describedby="search-query-error"
+          />
+          <small id="search-query-error" class="field-error" aria-live="polite"></small>
+        </p>
+
+        <p class="form-buttons">
+          <button type="submit" class="slab dialog-button is-focused">Search</button>
+          <button type="button" class="slab dialog-button" data-action="cancel">Cancel</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- Short status messages -->
+    <p id="toast" role="status" aria-live="polite" hidden></p>
+
+    <!-- Music keeps playing while you browse, so its element lives outside the screens -->
+    <audio id="music-audio" preload="auto"></audio>
+
+    <!-- Icon sprite: one <symbol> per icon, drawn anywhere with <use href="#icon-...">.
+         The outline icons take their stroke from CSS, so every theme can recolour them. -->
+    <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-folder" viewBox="0 0 24 24">
+        <path d="M3 6h6l2 2h10v11H3z" />
+        <path d="M3 10h18" />
+      </symbol>
+      <symbol id="icon-film" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="1" />
+        <path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4" />
+      </symbol>
+      <symbol id="icon-note" viewBox="0 0 24 24">
+        <path d="M9 18V5l11-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="17" cy="16" r="3" />
+      </symbol>
+      <symbol id="icon-picture" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" />
+        <path d="M3 16l5-5 4 4 3-3 6 6" />
+        <circle cx="16" cy="9" r="2" />
+      </symbol>
+      <symbol id="icon-drive" viewBox="0 0 24 24">
+        <rect x="2" y="7" width="20" height="10" rx="2" />
+        <circle cx="18" cy="12" r="1.5" />
+        <path d="M5 12h8" />
+      </symbol>
+      <symbol id="icon-disc" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="2.5" />
+      </symbol>
+      <symbol id="icon-up" viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6" /></symbol>
+      <symbol id="icon-gear" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" />
+        <path
+          d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"
+        />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+      <symbol id="icon-back" viewBox="0 0 24 24"><path d="M20 12H5M11 6l-6 6 6 6" /></symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="M16 16l5 5" />
+      </symbol>
+      <symbol id="icon-person" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+      </symbol>
+      <symbol id="icon-previous" viewBox="0 0 12 12"><path d="M2 1h2v10H2zM11 1v10L4 6z" /></symbol>
+      <symbol id="icon-next" viewBox="0 0 12 12"><path d="M8 1h2v10H8zM1 1v10l7-5z" /></symbol>
+      <symbol id="icon-play" viewBox="0 0 12 12"><path d="M2 1v10l9-5z" /></symbol>
+      <symbol id="icon-pause" viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z" /></symbol>
+      <symbol id="icon-stop" viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" /></symbol>
+      <symbol id="icon-mute" viewBox="0 0 12 12"><path d="M1 4h3l3-3v10L4 8H1z" /></symbol>
+      <symbol id="icon-record" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.5" /></symbol>
+    </svg>
+
+    <!-- ============================== Templates ==============================
+         The structure of every screen is written here once; JavaScript clones a template,
+         fills in the text and puts the copy into <main id="screen-host">. -->
+
+    <!-- Start screen: clock, the five-entry start menu, status line -->
+    <template id="start-screen-template">
+      <section class="screen start-screen" aria-label="Start">
+        <header class="screen-header">
+          <p class="watermark" aria-hidden="true">start</p>
+          <p class="clock">
+            <time class="clock-date"></time>
+            <time class="clock-time"></time>
+          </p>
+          <p class="user-band">
+            <span class="user-avatar" aria-hidden="true">&#9786;</span>
+            <span class="user-name"></span>
+          </p>
+        </header>
+        <div class="home-ghost" aria-hidden="true"></div>
+        <nav class="screen-nav" aria-label="Start menu">
+          <ul class="start-menu"></ul>
+        </nav>
+        <footer class="screen-footer">
+          <p class="start-footer">
+            <span><span class="power-icon log-off-icon"></span>Log Off</span>
+            <span><span class="power-icon"></span>Turn Off Computer</span>
+          </p>
+          <p class="status-line"></p>
+        </footer>
+      </section>
+    </template>
+
+    <!-- One entry of the start menu -->
+    <template id="start-entry-template">
+      <li class="slab start-entry">
+        <span class="start-entry-icon"></span>
+        <span class="start-entry-label"></span>
+      </li>
+    </template>
+
+    <!-- Browse screen: shared by My Videos, My Music, My Pictures, My Computer and Settings.
+         Commands on the left, tiles or rows on the right. -->
+    <template id="browse-screen-template">
+      <section class="screen browse-screen">
+        <header class="screen-header">
+          <p class="watermark" aria-hidden="true"></p>
+          <p class="section-label"></p>
+          <div class="title-block">
+            <h1 class="title-main"></h1>
+            <p class="title-sub"></p>
+          </div>
+        </header>
+        <nav class="screen-nav" aria-label="Views and commands">
+          <ul class="mode-list"></ul>
+        </nav>
+        <!-- Only one of these three is shown at a time: tiles, a plain list, or a numbered list -->
+        <section class="tile-grid" aria-label="Items" hidden></section>
+        <ul class="row-list" hidden></ul>
+        <ol class="row-list" hidden></ol>
+        <p class="paging" hidden>
+          <span class="paging-count"></span>
+          <span class="paging-arrows">
+            <button type="button" class="paging-up" aria-label="Previous page">&#9650;</button>
+            <button type="button" class="paging-down" aria-label="Next page">&#9660;</button>
+          </span>
+        </p>
+        <p class="loading-note" hidden></p>
+        <div class="empty-note" hidden>
+          <p class="empty-title"></p>
+          <p class="empty-hint"></p>
+        </div>
+        <footer class="screen-footer">
+          <p class="status-line"></p>
+        </footer>
+      </section>
+    </template>
+
+    <!-- One command in the left column; the dot shows an option that is switched on -->
+    <template id="mode-template">
+      <li class="slab mode-item">
+        <span class="mode-label"></span>
+        <span class="mode-dot" hidden></span>
+      </li>
+    </template>
+
+    <!-- One tile: a series, an album, a folder or a picture -->
+    <template id="tile-template">
+      <article class="tile">
+        <figure class="tile-thumb">
+          <img
+            class="tile-image"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            width="192"
+            height="140"
+            hidden
+          />
+          <span class="tile-glyph"></span>
+          <span class="tile-badge" hidden></span>
+          <span class="tile-progress" hidden><span class="tile-progress-fill"></span></span>
+        </figure>
+        <h2 class="tile-caption"></h2>
+      </article>
+    </template>
+
+    <!-- One row: an episode, a song, a file or a setting -->
+    <template id="row-template">
+      <li class="slab row-item">
+        <span class="row-mark"><span class="row-mark-dot" hidden></span></span>
+        <span class="row-icon"></span>
+        <span class="row-equalizer" aria-hidden="true"
+          ><span></span><span></span><span></span
+        ></span>
+        <span class="row-label"
+          ><span class="row-text"></span><small class="row-sub" hidden></small
+        ></span>
+        <span class="row-value" hidden></span>
+        <span class="row-meta" hidden></span>
+      </li>
+    </template>
+
+    <!-- Now playing: cover, title, spectrum, progress -->
+    <template id="now-playing-template">
+      <section class="screen now-playing-screen" aria-label="Now playing">
+        <header class="screen-header">
+          <p class="watermark" aria-hidden="true">music</p>
+          <p class="section-label">NOW PLAYING</p>
+          <div class="title-block">
+            <h1 class="title-main"></h1>
+            <p class="title-sub"></p>
+          </div>
+        </header>
+        <nav class="screen-nav" aria-label="Playback commands">
+          <ul class="mode-list"></ul>
+        </nav>
+        <article class="now-playing">
+          <figure class="now-playing-art">
+            <img class="now-playing-cover" alt="" width="280" height="280" hidden />
+            <span class="now-playing-glyph"></span>
+          </figure>
+          <div class="now-playing-track">
+            <h2 class="track-title"></h2>
+            <p class="track-artist"></p>
+          </div>
+          <canvas class="now-playing-spectrum" width="560" height="76"></canvas>
+          <div class="now-playing-bar"><span class="now-playing-fill"></span></div>
+          <p class="now-playing-time">
+            <span class="time-label">TRACK TIME</span>
+            <time class="time-value">0:00</time>
+          </p>
+        </article>
+      </section>
+    </template>
+
+    <!-- One line of the player's options menu -->
+    <template id="player-menu-item-template">
+      <li class="slab player-menu-item">
+        <span class="player-menu-label"></span>
+        <span class="player-menu-value" hidden></span>
+        <span class="player-menu-dot" hidden></span>
+      </li>
+    </template>
+
+    <!-- Settings › About Whistler -->
+    <template id="about-template">
+      <article class="about">
+        <h2>Whistler Media Center</h2>
+        <p>
+          The web member of a small family: <strong>Neptune Media Center</strong> on the PSP,
+          <strong>Kiyora</strong> on Windows, and this one in a browser tab. Neptune and Odyssey
+          were Microsoft's codenames for the consumer and business Windows that never shipped; they
+          were merged into <strong>Whistler</strong>, which became XP.
+        </p>
+        <p class="about-source"></p>
+        <table class="key-table">
+          <caption>
+            Keys and controller buttons
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Key</th>
+              <th scope="col">Controller</th>
+              <th scope="col">What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Arrow keys</th>
+              <td>D-pad or stick</td>
+              <td>Move the highlight</td>
+            </tr>
+            <tr>
+              <th scope="row">Enter</th>
+              <td>A</td>
+              <td>Open</td>
+            </tr>
+            <tr>
+              <th scope="row">Backspace</th>
+              <td>B</td>
+              <td>Go back</td>
+            </tr>
+            <tr>
+              <th scope="row">Home</th>
+              <td>Select</td>
+              <td>Return to the start screen</td>
+            </tr>
+            <tr>
+              <th scope="row">/</th>
+              <td>&ndash;</td>
+              <td>Search the list on screen</td>
+            </tr>
+            <tr>
+              <th scope="row">F</th>
+              <td>Start</td>
+              <td>Full screen</td>
+            </tr>
+            <tr>
+              <th scope="row">T</th>
+              <td>&ndash;</td>
+              <td>Switch theme</td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+    </template>
+
+    <!-- Scripts, in dependency order. Classic scripts rather than modules, so the page
+         also works when index.html is opened straight from disk (file://). -->
+    <script src="js/utils.js"></script>
+    <script src="js/parsers.js"></script>
+    <script src="js/source.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/forms.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/library.js"></script>
+    <script src="js/browse-screen.js"></script>
+    <script src="js/music-player.js"></script>
+    <script src="js/video-player.js"></script>
+    <script src="js/photo-viewer.js"></script>
+    <script src="js/screens/start-screen.js"></script>
+    <script src="js/screens/videos-screen.js"></script>
+    <script src="js/screens/music-screen.js"></script>
+    <script src="js/screens/pictures-screen.js"></script>
+    <script src="js/screens/computer-screen.js"></script>
+    <script src="js/screens/settings-screen.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

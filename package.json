@@ -1,11 +1,12 @@
 {
   "name": "whistler-media-center",
-  "version": "0.2.0",
-  "description": "Windows XP Media Center Edition 2002 (and Whistler Beta 2, and Netflix) in a browser tab, reading your own folders. No install.",
+  "version": "0.3.0",
+  "description": "Windows XP Media Center Edition 2002 (and Whistler Beta 2, and Netflix) in a browser tab, reading your own folders. No install: open index.html.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js --open",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "format": "npx prettier --write ."
   },
   "license": "MIT",
   "private": true

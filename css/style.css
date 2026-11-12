@@ -1,0 +1,1525 @@
+/* Whistler Media Center — base stylesheet.
+   This file is the Media Center 2002 look and everything the three themes share.
+
+   The three constants of that look:
+     1. a huge lowercase watermark of the section name; the content sits on it
+     2. the selection is a bright green gel
+     3. Trebuchet, because Segoe UI reads as the wrong decade
+
+   The stylesheets are stacked as cascade layers, lowest first. A later layer always wins,
+   so a theme can restyle the base and the small-screen layout can rearrange any theme
+   without fighting over selector weight:
+     base       css/style.css               (this file)
+     themes     css/themes/whistler.css, css/themes/netflix.css
+     responsive css/responsive.css                                                  */
+@layer base, themes, responsive;
+
+@layer base {
+  /* ---------------------------------------------------------------- variables
+     Sizes and colours below come from the real shell (ehres.dll, build 5.1.2600.1106). */
+  :root {
+    --stage-scale: 1; /* how much the 1024x768 stage is scaled; set from js/navigation.js */
+    --era: 'Trebuchet MS', Trebuchet, 'Lucida Grande', 'DejaVu Sans', sans-serif;
+    /* the shell's palette, by its own constant names */
+    --offwhite: #f2f2f2;
+    --lightblue: #b2d4f5;
+    --mediumblue: #4f6eb9;
+    --darkblue: #072053;
+    --navyblue: #0f2d8b;
+    /* Common.Button.NoFocus / .Dormant: translucent blue slabs, not white */
+    --slab: rgba(67, 101, 191, 0.5);
+    --slab-dormant: rgba(45, 73, 146, 0.5);
+    --slab-edge: rgba(74, 114, 218, 0.47);
+    --slab-hover: rgba(80, 118, 210, 0.58);
+    /* Common.Button.Focus: a soft gloss, bright in the top third, dark at the bottom edge. No hard break. */
+    --gel: linear-gradient(
+      to bottom,
+      #30ac32 0%,
+      #55c354 12%,
+      #3aad3a 24%,
+      #2fa62f 42%,
+      #2fab2f 60%,
+      #2caa2d 72%,
+      #29a629 78%,
+      #23a023 84%,
+      #1b931b 90%,
+      #107710 100%
+    );
+    --gel-edge: #55c354;
+    --green: #3da33a;
+    --text: var(--offwhite);
+    --text-dim: var(--lightblue);
+    --text-faint: #8fb0d8;
+  }
+
+  /* ---------------------------------------------------------------- reset
+     The page is built from semantic elements (headings, paragraphs, lists, figures, buttons).
+     Their browser defaults are cleared here so that each component sets its own look. */
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #143459;
+  }
+  body {
+    font-family: var(--era);
+    color: var(--text);
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+  h1,
+  h2,
+  p,
+  ul,
+  ol,
+  figure {
+    margin: 0;
+    padding: 0;
+  }
+  h1,
+  h2 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  ul,
+  ol {
+    list-style: none;
+  }
+  button {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  img {
+    -webkit-user-drag: none;
+  }
+  /* The hidden attribute must win over any display value a component sets */
+  [hidden] {
+    display: none !important;
+  }
+  .icon-sprite {
+    display: none;
+  }
+  .noscript-note {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #143459;
+    font-size: 20px;
+    text-align: center;
+  }
+
+  /* ---------------------------------------------------------------- backdrop
+   Common.Background.png is a painted 1024x768 light curtain: vertical streaks, bright
+   around x=130-200 and x=700, a dark band near x=830, darker at the top than the bottom.
+   Sampled every 64px across the middle row and rebuilt as two gradients. */
+  #backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+      to right,
+      #1c4689 0%,
+      #2e56a5 6%,
+      #4279c3 12.5%,
+      #4373c8 19%,
+      #396bba 25%,
+      #2b59ac 31%,
+      #254e99 37.5%,
+      #244b96 44%,
+      #20458f 50%,
+      #224792 56%,
+      #285098 62.5%,
+      #3463ad 69%,
+      #22488a 75%,
+      #1c447d 81%,
+      #214b89 87.5%,
+      #3b64ac 94%,
+      #2a55a0 100%
+    );
+  }
+  #backdrop .backdrop-streaks {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 10, 40, 0.28) 0%,
+      rgba(0, 10, 40, 0.1) 30%,
+      rgba(0, 0, 0, 0) 55%,
+      rgba(120, 160, 230, 0.22) 100%
+    );
+  }
+
+  /* ---------------------------------------------------------------- stage */
+  #stage {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: 1024px;
+    height: 768px;
+    z-index: 1;
+    transform: translate(-50%, -50%) scale(var(--stage-scale));
+    transform-origin: center;
+    overflow: visible;
+  }
+  #screen-host > .screen {
+    position: absolute;
+    inset: 0;
+    animation: screen-in 0.18s ease-out;
+  }
+  @keyframes screen-in {
+    from {
+      opacity: 0;
+      transform: translateX(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* <main> fills the stage; the current screen fills <main> */
+  #screen-host {
+    position: absolute;
+    inset: 0;
+  }
+  /* <header>, <nav>, <footer> and the now-playing <article> group a screen's parts for meaning
+     only. "display: contents" takes their own box out of the layout, so every part is still
+     placed against the 1024x768 screen. */
+  .screen-header,
+  .screen-nav,
+  .screen-footer,
+  .now-playing {
+    display: contents;
+  }
+
+  /* Panel.TitlePanel: FS32 = 150px regular, OffWhite at 10%, char spacing .85, at (-11,-52).
+   HomeLabel ("start"): same face at 12.5%, at (175,129). Regular weight, not bold. */
+  .watermark {
+    position: absolute;
+    left: -11px;
+    top: -52px;
+    font-size: 150px;
+    font-weight: normal;
+    line-height: 1.2;
+    color: var(--offwhite);
+    opacity: 0.1;
+    pointer-events: none;
+    white-space: nowrap;
+    letter-spacing: -0.04em;
+  }
+  .start-screen .watermark {
+    left: 175px;
+    top: 129px;
+    opacity: 0.125;
+  }
+  /* Panel.ccArea: a 305x159 box from x=50, text right- and bottom-aligned with a 32px bottom margin, FS3 = 18px. */
+  .section-label {
+    position: absolute;
+    left: 50px;
+    top: 0;
+    width: 305px;
+    height: 127px;
+    padding-bottom: 2px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    text-align: right;
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--offwhite);
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  /* Panel.RightColumnLabel: FS8 = 24px bold at top 44, width 605, right margin 83 -> x=336.
+   Panel.RightColumnSubLabel: FS3 = 18px LightBlue at top 83. */
+  .title-block {
+    position: absolute;
+    left: 336px;
+    top: 44px;
+    width: 605px;
+    pointer-events: none;
+  }
+  .title-block .title-main {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--offwhite);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 39px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .title-block .title-sub {
+    font-size: 18px;
+    color: var(--lightblue);
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------------------------------------------------------------- slabs & gel */
+  .slab {
+    background: var(--slab);
+    border-top: 1px solid var(--slab-edge);
+    border-radius: 5px;
+    color: var(--lightblue);
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .slab:hover {
+    background: var(--slab-hover);
+    color: var(--offwhite);
+  }
+  .slab.is-focused,
+  .slab.is-focused:hover {
+    background: var(--gel);
+    border-top-color: var(--gel-edge);
+    color: var(--offwhite);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+  }
+
+  /* start menu: ColumnPanel.HomeMenu is the strip x=410..692, full height, entries centred in it.
+   Entries are StartPage.Button bitmaps, 239x55, text FS7 = 24px regular, inset 28. */
+  .start-menu {
+    position: absolute;
+    left: 410px;
+    top: 0;
+    height: 768px;
+    width: 282px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .start-menu .start-entry {
+    height: 55px;
+    width: 239px;
+    margin-bottom: 2px;
+    font-size: 24px;
+    padding-left: 28px;
+  }
+
+  /* modes column: Panel.Menu margin-left 54 + Button margin 16 = x 70; Common.Button 251x51, FS2 = 20px bold.
+   When the cursor is over in the content, the column shows the Dormant bitmap (darker blue). */
+  .mode-list {
+    position: absolute;
+    left: 70px;
+    top: 186px;
+    width: 251px;
+  }
+  .mode-list .mode-item {
+    height: 51px;
+    width: 251px;
+    margin-bottom: 2px;
+    font-size: 20px;
+    font-weight: bold;
+    padding-left: 24px;
+    padding-right: 34px;
+  }
+  .mode-list.is-dormant .mode-item:not(.is-focused) {
+    background: var(--slab-dormant);
+  }
+  .mode-list .mode-item .mode-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mode-list .mode-item .mode-dot {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin-top: -5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .mode-list .mode-item .mode-dot.is-on {
+    background: #fff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  }
+  .mode-list .mode-item.is-focused .mode-dot {
+    background: rgba(255, 255, 255, 0.55);
+  }
+  .mode-list .mode-item.is-focused .mode-dot.is-on {
+    background: #fff;
+  }
+
+  /* clock: Clock.Date.Home right-aligned to x=378 at top 275 (FS1 = 20px, LightBlue);
+   Clock.Time.Home at (206,308), FS2 = 20px bold. Left of the menu, below the watermark's baseline. */
+  .clock {
+    position: absolute;
+    left: 60px;
+    top: 275px;
+    width: 318px;
+    text-align: right;
+    pointer-events: none;
+  }
+  .clock .clock-date,
+  .clock .clock-time {
+    display: block;
+  }
+  .clock .clock-date {
+    font-size: 20px;
+    color: var(--lightblue);
+    line-height: 28px;
+  }
+  .clock .clock-time {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--offwhite);
+    line-height: 28px;
+    margin-top: 5px;
+  }
+
+  /* Image.HomeWatermark: a 362x336 ghosted device at (578,121), one per entry, swapped with focus. */
+  .home-ghost {
+    position: absolute;
+    left: 578px;
+    top: 121px;
+    width: 362px;
+    height: 336px;
+    opacity: 0.09;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .home-ghost svg {
+    width: 300px;
+    height: 300px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 0.6;
+  }
+  .status-line {
+    position: absolute;
+    left: 70px;
+    top: 732px;
+    width: 300px;
+    font-size: 12px;
+    color: var(--text-faint);
+    opacity: 0.75;
+    pointer-events: none;
+  }
+  /* the start screen keeps its status line under the menu */
+  .start-screen .status-line {
+    left: 410px;
+    top: 625px;
+    width: 420px;
+  }
+
+  /* ---------------------------------------------------------------- tiles
+   FancyGallery: 3x3 of Common.Tile 212x196 in a 636-wide panel at the right edge (x=388), 23px
+   below the 159px top band. The tile bitmap is a rounded blue square (#486DCD 50%) holding the
+   picture with the GalleryLabel (FS13 = 16px bold, 146x30) under it; focused = solid green. */
+  .tile-grid {
+    position: absolute;
+    left: 388px;
+    top: 182px;
+    width: 636px;
+    height: 588px;
+    display: grid;
+    grid-template-columns: repeat(3, 212px);
+    column-gap: 0;
+    row-gap: 0;
+    align-content: start;
+  }
+  .tile {
+    width: 212px;
+    height: 196px;
+    padding: 10px 10px 0;
+    border-radius: 10px;
+    background: rgba(72, 109, 205, 0.5);
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+  }
+  .tile .tile-thumb {
+    width: 192px;
+    height: 140px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: rgba(0, 20, 60, 0.25);
+    position: relative;
+    overflow: hidden;
+    flex: 0 0 140px;
+  }
+  .tile .tile-thumb > img,
+  .tile .tile-thumb > canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #0d2340;
+  }
+  .tile .tile-thumb .tile-mosaic {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 2px;
+  }
+  .tile .tile-thumb .tile-mosaic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #0d2340;
+  }
+  .tile .tile-thumb .tile-glyph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tile .tile-thumb .tile-glyph svg {
+    width: 64px;
+    height: 64px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1.3;
+    opacity: 0.8;
+  }
+  .tile .tile-thumb .tile-badge {
+    position: absolute;
+    right: 6px;
+    bottom: 5px;
+    font-size: 11px;
+    padding: 1px 5px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 2px;
+    color: #fff;
+  }
+  .tile .tile-thumb .tile-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .tile .tile-thumb .tile-progress .tile-progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--green);
+  }
+  .tile.is-focused {
+    background: linear-gradient(
+      to bottom,
+      #58be56 0%,
+      #5fbe5e 10%,
+      #46af45 30%,
+      #3ab038 55%,
+      #36b334 70%,
+      #2caa2c 88%,
+      #269424 100%
+    );
+  }
+  .tile:hover:not(.is-focused) {
+    background: rgba(80, 118, 210, 0.58);
+  }
+  .tile .tile-caption {
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 30px;
+    height: 30px;
+    margin: 6px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--lightblue);
+  }
+  .tile.is-focused .tile-caption {
+    color: var(--offwhite);
+  }
+
+  /* ---------------------------------------------------------------- rows
+   Common.ListButton 607x51, same gloss as the buttons; text FS6 = 22px bold. */
+  .row-list {
+    position: absolute;
+    left: 388px;
+    top: 182px;
+    width: 607px;
+    height: 588px;
+  }
+  .row-list .row-item {
+    height: 51px;
+    width: 607px;
+    margin-bottom: 2px;
+    font-size: 22px;
+    font-weight: bold;
+  }
+  .row-list .row-item .row-mark {
+    width: 20px;
+    flex: 0 0 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .row-list .row-item .row-mark .row-mark-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    display: block;
+  }
+  .row-list .row-item .row-mark .row-mark-dot.is-partial {
+    background: linear-gradient(90deg, var(--green) 50%, rgba(255, 255, 255, 0.35) 50%);
+  }
+  .row-list .row-item .row-icon {
+    min-width: 34px;
+    flex: 0 0 auto;
+    padding: 0 8px 0 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .row-list .row-item .row-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    opacity: 0.85;
+  }
+  .row-list .row-item .row-icon .row-number {
+    font-size: 15px;
+    opacity: 0.8;
+  }
+  .row-list .row-item .row-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 10px;
+  }
+  .row-list .row-item .row-sub {
+    font-size: 14px;
+    opacity: 0.75;
+    font-weight: normal;
+    margin-left: 8px;
+  }
+  .row-list .row-item .row-meta {
+    flex: 0 0 auto;
+    font-size: 18px;
+    font-weight: normal;
+    padding-right: 16px;
+    opacity: 0.9;
+    white-space: nowrap;
+  }
+  .row-list .row-item.is-focused .row-meta {
+    opacity: 1;
+  }
+  .row-list .row-item .row-equalizer {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 13px;
+    margin-right: 8px;
+  }
+  .row-list .row-item .row-equalizer span {
+    display: block;
+    width: 2px;
+    background: #fff;
+  }
+  .row-list .row-item.is-playing .row-equalizer {
+    display: flex;
+  }
+  .row-list .row-item .row-equalizer span:nth-child(1) {
+    height: 7px;
+    animation: eq 0.7s ease-in-out infinite alternate;
+  }
+  .row-list .row-item .row-equalizer span:nth-child(2) {
+    height: 13px;
+    animation: eq 0.5s ease-in-out infinite alternate;
+  }
+  .row-list .row-item .row-equalizer span:nth-child(3) {
+    height: 9px;
+    animation: eq 0.9s ease-in-out infinite alternate;
+  }
+  @keyframes eq {
+    to {
+      height: 3px;
+    }
+  }
+
+  /* "N of M": the gallery now fills the panel to the bottom edge, so the counter sits in the top band's right corner. */
+  .paging {
+    position: absolute;
+    left: 700px;
+    top: 118px;
+    width: 324px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    font-size: 20px;
+    color: var(--offwhite);
+  }
+  .paging .paging-arrows {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .paging .paging-arrows button {
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0.9;
+    cursor: pointer;
+  }
+  .paging .paging-arrows button:disabled {
+    opacity: 0.3;
+  }
+  .empty-note {
+    position: absolute;
+    left: 388px;
+    top: 190px;
+    width: 580px;
+    font-size: 22px;
+    line-height: 1.35;
+    color: var(--text);
+  }
+  .empty-note .empty-hint {
+    display: block;
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-top: 14px;
+  }
+  .loading-note {
+    position: absolute;
+    left: 388px;
+    top: 190px;
+    font-size: 20px;
+    color: var(--text-dim);
+  }
+  .loading-note::after {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    animation: dots 1.2s steps(4) infinite;
+    overflow: hidden;
+    vertical-align: bottom;
+  }
+  @keyframes dots {
+    to {
+      width: 30px;
+    }
+  }
+
+  /* ---------------------------------------------------------------- now playing */
+  .now-playing-art {
+    position: absolute;
+    left: 568px;
+    top: 146px;
+    width: 280px;
+    height: 280px;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+  .now-playing-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .now-playing-art .now-playing-glyph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .now-playing-art .now-playing-glyph svg {
+    width: 120px;
+    height: 120px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1;
+    opacity: 0.6;
+  }
+  .now-playing-track {
+    position: absolute;
+    left: 428px;
+    top: 440px;
+    width: 560px;
+    text-align: center;
+  }
+  .now-playing-track .track-title {
+    font-size: 24px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .now-playing-track .track-artist {
+    font-size: 17px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .now-playing-spectrum {
+    position: absolute;
+    left: 428px;
+    top: 520px;
+    width: 560px;
+    height: 76px;
+  }
+  .now-playing-time {
+    position: absolute;
+    left: 640px;
+    top: 616px;
+    width: 350px;
+    text-align: right;
+    font-size: 19px;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  .now-playing-time .time-label {
+    font-weight: normal;
+    color: var(--text-dim);
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin-right: 10px;
+  }
+  .now-playing-bar {
+    position: absolute;
+    left: 428px;
+    top: 604px;
+    width: 560px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .now-playing-bar .now-playing-fill {
+    display: block;
+    height: 100%;
+    background: var(--green);
+    width: 0;
+  }
+
+  /* ---------------------------------------------------------------- transport pill (bottom-LEFT, silver) */
+  #transport {
+    position: fixed;
+    left: 14px;
+    bottom: 12px;
+    z-index: 5;
+    height: 30px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border-radius: 15px;
+    background: linear-gradient(to bottom, #fbfdfe 0%, #dce4ec 46%, #b9c4d0 50%, #d2dae4 100%);
+    border: 1px solid #8c9aaa;
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 #fff;
+    transform: scale(var(--stage-scale));
+    transform-origin: left bottom;
+    font-family: var(--era);
+  }
+  #transport .transport-button {
+    height: 22px;
+    min-width: 24px;
+    padding: 0 5px;
+    border: 0;
+    background: transparent;
+    border-radius: 11px;
+    color: #22334a;
+    font-size: 11px;
+    font-family: var(--era);
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #transport .transport-button svg {
+    width: 12px;
+    height: 12px;
+    fill: #22334a;
+  }
+  #transport .transport-button:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+  #transport .transport-button:active {
+    background: rgba(0, 0, 0, 0.16);
+  }
+  #transport .transport-separator {
+    width: 1px;
+    height: 16px;
+    background: #9aa8b6;
+    opacity: 0.6;
+    margin: 0 5px;
+  }
+  #transport .transport-label {
+    font-size: 8px;
+    color: #22334a;
+    letter-spacing: 1px;
+  }
+  #transport .transport-button.record-button svg {
+    fill: #c4342b;
+  }
+
+  /* ---------------------------------------------------------------- now-playing inset (bottom-RIGHT) */
+  #now-playing-inset {
+    position: fixed;
+    right: 14px;
+    bottom: 12px;
+    z-index: 5;
+    width: 260px;
+    height: 54px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.17);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transform: scale(var(--stage-scale));
+    transform-origin: right bottom;
+  }
+  #now-playing-inset:hover {
+    background: rgba(255, 255, 255, 0.27);
+  }
+  #now-playing-inset .inset-art {
+    width: 42px;
+    height: 42px;
+    background: rgba(0, 0, 0, 0.3);
+    flex: 0 0 42px;
+    overflow: hidden;
+  }
+  #now-playing-inset .inset-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  #now-playing-inset .inset-text {
+    flex: 1;
+    min-width: 0;
+  }
+  #now-playing-inset .inset-text .inset-title,
+  #now-playing-inset .inset-text .inset-artist {
+    display: block;
+  }
+  #now-playing-inset .inset-text .inset-title {
+    font-size: 14px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #now-playing-inset .inset-text .inset-artist {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #now-playing-inset canvas {
+    width: 40px;
+    height: 30px;
+    flex: 0 0 40px;
+  }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 60px;
+    transform: translateX(-50%) scale(var(--stage-scale));
+    transform-origin: center bottom;
+    z-index: 30;
+    background: var(--gel);
+    color: #fff;
+    font-weight: bold;
+    padding: 8px 22px;
+    font-size: 17px;
+    border-top: 1px solid var(--gel-edge);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    animation: toast-in 0.2s ease-out;
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) scale(var(--s)) translateY(10px);
+    }
+  }
+
+  /* ---------------------------------------------------------------- video player */
+  #player {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: #000;
+  }
+  #player.osd-hidden {
+    cursor: none;
+  }
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+  #video::cue {
+    font-family: var(--era);
+    font-size: 26px;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  #osd {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 60px 40px 26px;
+    font-family: var(--era);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
+    transition: opacity 0.25s;
+    opacity: 1;
+  }
+  #player.osd-hidden #osd {
+    opacity: 0;
+  }
+  .osd-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  #osd-name {
+    font-size: 24px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #osd-series {
+    font-size: 16px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    margin-left: 20px;
+  }
+  .osd-bar {
+    position: relative;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #osd-buffer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+  }
+  #osd-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background: var(--gel);
+    border-radius: 4px;
+  }
+  #osd-knob {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+    left: 0;
+  }
+  .osd-times {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 16px;
+    color: #fff;
+  }
+  #osd-scan {
+    color: var(--green);
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .osd-buttons {
+    position: absolute;
+    right: 40px;
+    top: 16px;
+    display: flex;
+    gap: 6px;
+  }
+  .osd-buttons button {
+    font-family: var(--era);
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.17);
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    cursor: pointer;
+  }
+  .osd-buttons button:hover {
+    background: var(--gel);
+  }
+  #video.fill-screen {
+    object-fit: cover;
+  }
+  #video.large-cues::cue {
+    font-size: 40px;
+  }
+
+  /* The player's options menu: same slab column as every other screen, radio dots for state. */
+  #player-menu {
+    position: absolute;
+    left: 40px;
+    top: 40px;
+    width: 440px;
+    padding: 14px 0 8px;
+    background: rgba(6, 20, 40, 0.62);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    transform: scale(var(--stage-scale));
+    transform-origin: top left;
+  }
+  .player-menu-title {
+    font-size: 17px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 28px 10px;
+  }
+  .player-menu-item {
+    height: 52px;
+    margin: 0 14px 1px;
+    font-size: 21px;
+    padding-left: 24px;
+    padding-right: 40px;
+  }
+  .player-menu-item .player-menu-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .player-menu-item .player-menu-value {
+    font-size: 15px;
+    opacity: 0.85;
+    margin-left: 12px;
+    white-space: nowrap;
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: normal;
+  }
+  .player-menu-item .player-menu-dot {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin-top: -5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .player-menu-item .player-menu-dot.is-on {
+    background: #fff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  }
+  /* Key legend (H): a table with one row per key. Its column headings are for screen readers only. */
+  #key-legend {
+    position: absolute;
+    right: 30px;
+    top: 70px;
+    padding: 10px 18px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    border-spacing: 0;
+    background: rgba(0, 0, 0, 0.65);
+    font-size: 15px;
+    color: #fff;
+  }
+  #key-legend caption {
+    padding: 0 0 6px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-align: left;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  #key-legend th,
+  #key-legend td {
+    padding: 4px 0;
+    font-weight: normal;
+    text-align: left;
+  }
+  #key-legend tbody th {
+    min-width: 92px;
+    padding-right: 14px;
+    font-weight: bold;
+    color: var(--green);
+  }
+
+  /* ---------------------------------------------------------------- photo viewer */
+  #photo-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: #000;
+    overflow: hidden;
+  }
+  .photo-frame {
+    position: absolute;
+    inset: 0;
+  }
+  /* Two stacked images; the visible one fades in over the other */
+  .photo-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .photo-layer.is-visible {
+    opacity: 1;
+  }
+  /* Ken Burns: a slow drift and zoom during slide shows */
+  .photo-layer.ken-burns {
+    animation: kenburns var(--kb-dur, 7s) ease-out forwards;
+  }
+  @keyframes kenburns {
+    from {
+      transform: scale(1) translate(0, 0);
+    }
+    to {
+      transform: scale(1.09) translate(var(--kb-x, 1%), var(--kb-y, -1%));
+    }
+  }
+  #photo-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 40px 40px 22px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    transition: opacity 0.3s;
+  }
+  #photo-viewer.caption-hidden #photo-caption {
+    opacity: 0;
+  }
+  #photo-name {
+    font-size: 24px;
+    color: #fff;
+    text-transform: uppercase;
+  }
+  #photo-meta {
+    font-size: 16px;
+    color: var(--text-dim);
+  }
+  /* Close button for mouse and touch; the keyboard uses Backspace */
+  #photo-close-button {
+    position: absolute;
+    right: 18px;
+    top: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    font-size: 26px;
+    line-height: 1;
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #photo-viewer:hover #photo-close-button {
+    opacity: 0.85;
+  }
+
+  /* ---------------------------------------------------------------- message box and form overlay */
+  #dialog-overlay,
+  #form-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(6, 20, 40, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dialog-box {
+    width: 520px;
+    padding: 26px 30px 24px;
+    transform: scale(var(--stage-scale));
+    transform-origin: center;
+    background: radial-gradient(ellipse at 30% 20%, #4a86b8, #1d4a80 70%);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    font-family: var(--era);
+  }
+  .dialog-box .dialog-title {
+    font-size: 22px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .dialog-box .dialog-text {
+    font-size: 18px;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 22px;
+    white-space: pre-line;
+  }
+  .dialog-box .dialog-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .dialog-box .dialog-button {
+    min-width: 120px;
+    height: 44px;
+    padding: 0 22px;
+    font-size: 19px;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* ---------------------------------------------------------------- forms
+     Profile and Search share the message box frame; each field is a label, a control and
+     a line for the validation message. */
+  .form-panel .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 12px;
+    font-size: 16px;
+    color: var(--text);
+  }
+  .form-panel .form-row-inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .form-panel label {
+    color: var(--text-dim);
+  }
+  .form-panel input[type='text'],
+  .form-panel input[type='number'],
+  .form-panel input[type='search'],
+  .form-panel select {
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 3px;
+    background: rgba(6, 20, 40, 0.5);
+    color: #fff;
+    font: inherit;
+    font-size: 18px;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .form-panel select option {
+    background: #1d4a80;
+    color: #fff;
+  }
+  .form-panel input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+  }
+  .form-panel input:focus-visible,
+  .form-panel select:focus-visible {
+    outline: 2px solid var(--gel-edge);
+    outline-offset: 1px;
+  }
+  /* A field that failed validation, and the message under it */
+  .form-panel .is-invalid {
+    border-color: #ff9d8a;
+  }
+  .form-panel .field-error {
+    min-height: 17px;
+    font-size: 14px;
+    color: #ffc0b3;
+  }
+  .form-panel input[type='range'],
+  .form-panel input[type='checkbox'] {
+    accent-color: var(--green);
+  }
+  .form-panel input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+  }
+  .form-panel output {
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+  .form-panel .form-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+
+  /* ---------------------------------------------------------------- settings: value on the right of a row, the About page */
+  .row-list .row-item .row-value {
+    flex: 0 0 auto;
+    padding-right: 16px;
+    font-size: 16px;
+    color: #fff;
+    opacity: 0.95;
+    white-space: nowrap;
+  }
+  .about {
+    position: absolute;
+    left: 428px;
+    top: 160px;
+    width: 545px;
+    font-size: 17px;
+    line-height: 1.45;
+    color: var(--text);
+  }
+  .about h2 {
+    font-size: 26px;
+    margin: 0 0 8px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: normal;
+  }
+  .about p {
+    margin: 0 0 12px;
+  }
+  .about strong {
+    color: #fff;
+  }
+  /* Keyboard and controller table */
+  .key-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .key-table caption {
+    padding-bottom: 4px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-align: left;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .key-table th,
+  .key-table td {
+    padding: 4px 12px 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    font-weight: normal;
+    text-align: left;
+  }
+  .key-table thead th {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .key-table tbody th {
+    font-weight: bold;
+    white-space: nowrap;
+    color: #fff;
+  }
+
+  /* The browse grid is a mouse target too */
+  .slab,
+  .tile {
+    cursor: pointer;
+  }
+
+  /* ---------------------------------------------------------------- helpers */
+  /* Kept for screen readers, taken out of sight */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ---------------------------------------------------------------- theme hooks
+     Parts only some layouts show: the site header (Whistler title bar, phone app bar),
+     the Luna user band and start-menu footer, the desktop stamp, the Bliss hill. */
+  #site-header,
+  .user-band,
+  .start-footer,
+  #beta-mark,
+  #backdrop .backdrop-hill {
+    display: none;
+  }
+  .start-menu .start-entry .start-entry-icon {
+    display: none;
+  }
+  .start-menu .start-entry .start-entry-label {
+    pointer-events: none;
+  }
+  #beta-mark {
+    position: fixed;
+    right: 18px;
+    bottom: 14px;
+    z-index: 4;
+    text-align: right;
+    font:
+      11px Tahoma,
+      sans-serif;
+    color: #fff;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+  }
+  #beta-mark strong {
+    display: block;
+    font-weight: bold;
+  }
+  /* --hero: the picture of the focused tile, used as a backdrop by the Netflix theme */
+  .screen {
+    --hero: none;
+  }
+
+  /* Drop target hint while a folder is dragged over the page, any theme */
+  body.is-dropping #stage {
+    outline: 3px dashed var(--green);
+    outline-offset: -3px;
+  }
+}
