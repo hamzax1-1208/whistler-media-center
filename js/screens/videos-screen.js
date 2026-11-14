@@ -31,7 +31,7 @@ function classifyVideo(file, isLibraryRoot) {
       seriesKey = `title|${release.title.toLowerCase()}`;
     } else {
       isLoose = true;
-      release = { title: baseName(mediaSource.rootLabel(folder)), year: null, season: null };
+      release = { title: folderDisplayName(folder), year: null, season: null };
       seriesKey = `root|${folder.toLowerCase()}`;
     }
   } else {
@@ -137,7 +137,7 @@ function toPlayerItem(file) {
     file,
     path: file.path,
     label: episodeLabel(file),
-    series: file.seriesTitle || baseName(file.dir),
+    series: file.seriesTitle || folderDisplayName(file.dir),
   };
 }
 
@@ -155,7 +155,7 @@ function createEpisodeRow(file, queue) {
     const paddedEpisode = String(file.episode).padStart(2, '0');
     number = file.season ? `${file.season}×${paddedEpisode}` : paddedEpisode;
   }
-  const details = [file.seriesTitle || baseName(file.dir)];
+  const details = [file.seriesTitle || folderDisplayName(file.dir)];
   if (tags.width) details.push(`${tags.width}×${tags.height}`);
   if (tags.codec) details.push(tags.codec);
 
@@ -197,13 +197,18 @@ function createVideosScreen() {
     sortBy = newSort;
     showItems();
   };
-  const buildModes = () => [
-    { label: 'Series', isOn: view === 'series', run: selectView('series') },
-    { label: 'Folders', isOn: view === 'folders', run: selectView('folders') },
-    { label: 'Recently added', isOn: view === 'recent', run: selectView('recent') },
-    { label: 'Sort by name', isOn: sortBy === 'name', run: selectSort('name') },
-    { label: 'Sort by date', isOn: sortBy === 'date', run: selectSort('date') },
-  ];
+  const buildModes = () =>
+    withAddFolderMode(
+      [
+        { label: 'Series', isOn: view === 'series', run: selectView('series') },
+        { label: 'Folders', isOn: view === 'folders', run: selectView('folders') },
+        { label: 'Recently added', isOn: view === 'recent', run: selectView('recent') },
+        { label: 'Sort by name', isOn: sortBy === 'name', run: selectSort('name') },
+        { label: 'Sort by date', isOn: sortBy === 'date', run: selectSort('date') },
+      ],
+      addFolder,
+      roots.length === 0,
+    );
 
   const compareGroups = (first, second) =>
     sortBy === 'date' ? second.mtime - first.mtime : naturalCompare(first.title, second.title);
@@ -227,7 +232,12 @@ function createVideosScreen() {
     const folders = new Map();
     for (const file of files) {
       if (!folders.has(file.dir)) {
-        folders.set(file.dir, { title: baseName(file.dir), dir: file.dir, episodes: [], mtime: 0 });
+        folders.set(file.dir, {
+          title: folderDisplayName(file.dir),
+          dir: file.dir,
+          episodes: [],
+          mtime: 0,
+        });
       }
       const folder = folders.get(file.dir);
       folder.episodes.push(file);
@@ -280,13 +290,26 @@ function createVideosScreen() {
     showItems();
   }
 
-  loadLibrary().catch((error) => {
+  function showLoadProblem(error) {
     reportProblem('Loading My Videos', error);
     screen.updateSpec({
       loading: null,
       empty: { title: 'Your videos could not be read.', hint: error.message },
     });
-  });
+  }
+
+  /** Asks for another folder for this library and reads the library again. */
+  async function addFolder() {
+    if (!mediaSource.local) {
+      openScreen(createComputerScreen()); // in server mode a folder is chosen from the drives
+      return;
+    }
+    if (!(await pickFolderIntoLibraries('videos'))) return;
+    screen.updateSpec({ loading: 'Looking through your video folders', items: [] });
+    await loadLibrary().catch(showLoadProblem);
+  }
+
+  loadLibrary().catch(showLoadProblem);
   return screen;
 }
 

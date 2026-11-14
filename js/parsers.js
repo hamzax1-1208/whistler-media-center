@@ -698,11 +698,69 @@
       .replace(/</g, '&lt;')
       .replace(/\u0001/g, '<i>')
       .replace(/\u0002/g, '</i>');
+    body = tidyCueText(body);
     const opens = (body.match(/<i>/g) || []).length,
       closes = (body.match(/<\/i>/g) || []).length;
     if (opens > closes) body += '</i>'.repeat(opens - closes);
     if (st && st.italic && !body.includes('<i>')) body = '<i>' + body + '</i>';
     return { body, line };
+  }
+  // WebVTT cue text may not hold an empty line (it ends the cue: the rest would be lost) nor
+  // the arrow "-->" (it reads as the start of another cue).
+  function tidyCueText(text) {
+    return text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join('\n')
+      .replace(/-->/g, '--&gt;');
+  }
+  // The text of one SRT cue as WebVTT: <i> <b> <u> stay, <font> and other tags go, a literal
+  // "<" or "&" is escaped, and {\an8} (top of the picture) becomes a cue position.
+  function srtCueToVtt(text) {
+    const line = /\{[^}]*\\an[789][^}]*\}/.test(text) ? ' line:8%' : '';
+    const body = tidyCueText(
+      text
+        .replace(/\r/g, '')
+        .replace(/\{\\[^}]*\}/g, '')
+        .replace(
+          /<(\/?)([biu])>/gi,
+          (all, slash, tag) => `\u0001${slash}${tag.toLowerCase()}\u0002`,
+        )
+        .replace(/<\/?[a-z][^>]*>/gi, '')
+        .replace(/&(?!(amp|lt|gt|nbsp|lrm|rlm);)/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/\u0001/g, '<')
+        .replace(/\u0002/g, '>'),
+    );
+    return body ? { body, line } : null;
+  }
+  // Writes cues out in time order. Fansubs often repeat a line on two layers for a glow
+  // effect; shown as plain text that would be the same sentence twice, so repeats are dropped.
+  function cuesToVtt(cues) {
+    cues.sort((a, b) => a.start - b.start);
+    const seen = new Set();
+    let out = 'WEBVTT\n\n';
+    for (const c of cues) {
+      const timing = `${vttTime(c.start)} --> ${vttTime(c.end)}${c.line}`;
+      const key = `${timing}\n${c.text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out += `${timing}\n${c.text}\n\n`;
+    }
+    return out;
+  }
+  // A subtitle file as text: UTF-16 or UTF-8 by its byte order mark, UTF-8 when the bytes are
+  // valid UTF-8, otherwise Windows-1254 (how older Turkish subtitle files are usually saved;
+  // it reads Western European files correctly too).
+  function decodeSubtitleBytes(b) {
+    if (b[0] === 0xff && b[1] === 0xfe) return dU16le.decode(b.subarray(2));
+    if (b[0] === 0xfe && b[1] === 0xff) return dU16be.decode(b.subarray(2));
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(b);
+    } catch {
+      return dec('windows-1254').decode(b);
+    }
   }
   const vttTime = (ms) => {
     ms = Math.max(0, Math.round(ms));
@@ -785,13 +843,8 @@
         const c = assToVtt(text, styles);
         if (c) cues.push({ start, end: start + dur, text: c.body, line: c.line });
       } else {
-        const t = text
-          .replace(/\r/g, '')
-          .replace(/<\/?font[^>]*>/gi, '')
-          .replace(/&/g, '&amp;')
-          .replace(/<(?!\/?[biu]>)/g, '&lt;')
-          .trim();
-        if (t) cues.push({ start, end: start + dur, text: t, line: '' });
+        const c = srtCueToVtt(text);
+        if (c) cues.push({ start, end: start + dur, text: c.body, line: c.line });
       }
     };
     let derails = 0,
@@ -848,26 +901,49 @@
       }
       if (!broke) pos = cEnd;
     }
-    cues.sort((a, b) => a.start - b.start);
-    let out = 'WEBVTT\n\n';
-    for (const c of cues)
-      out += `${vttTime(c.start)} --> ${vttTime(c.end)}${c.line}\n${c.text}\n\n`;
-    return out;
+    return cuesToVtt(cues);
   }
 
   // ------------------------------------------------------------------ subtitle files -> VTT
+  // Any subtitle file the app accepts, as WebVTT: .vtt is passed through, .ass / .ssa go to
+  // assFileToVtt, everything else is read as SRT. Real SRT files are sloppy, so the reader
+  // goes by the time lines only: one-digit hours, "." or "," before the fraction, one to
+  // three digits of it, missing counters and blank lines inside a cue are all accepted.
   function srtToVtt(txt) {
     txt = txt.replace(/^﻿/, '');
     if (/^WEBVTT/.test(txt)) return txt;
     if (/^\[Script Info\]/im.test(txt) || /^\[Events\]/im.test(txt)) return assFileToVtt(txt);
-    return (
-      'WEBVTT\n\n' +
-      txt
-        .replace(/\r/g, '')
-        .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
-        .replace(/<\/?font[^>]*>/gi, '')
-        .replace(/\{\\[^}]*\}/g, '')
-    );
+    const TIME = '(?:(\\d+):)?(\\d{1,2}):(\\d{1,2})[,.](\\d{1,3})';
+    const TIMING = new RegExp(`^\\s*${TIME}\\s*-->\\s*${TIME}`);
+    const toMs = (h, m, s, fraction) =>
+      ((+h || 0) * 3600 + +m * 60 + +s) * 1000 + +fraction.padEnd(3, '0');
+    const cues = [];
+    let current = null; // { start, end, lines } of the cue being read
+    const finish = (nextCueFollows) => {
+      if (!current) return;
+      const lines = current.lines;
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+      // a bare number after a blank line is the counter of the next cue, not text
+      const last = lines.length - 1;
+      if (nextCueFollows && last >= 0 && /^\d+$/.test(lines[last].trim())) {
+        if (last === 0 || !lines[last - 1].trim()) lines.pop();
+      }
+      const c = srtCueToVtt(lines.join('\n'));
+      if (c) cues.push({ start: current.start, end: current.end, text: c.body, line: c.line });
+    };
+    for (const raw of txt.replace(/\r\n?/g, '\n').split('\n')) {
+      const m = TIMING.exec(raw);
+      if (!m) {
+        if (current) current.lines.push(raw);
+        continue;
+      }
+      finish(true);
+      const start = toMs(m[1], m[2], m[3], m[4]);
+      const end = toMs(m[5], m[6], m[7], m[8]);
+      current = { start, end: end > start ? end : start + 2000, lines: [] };
+    }
+    finish(false);
+    return cuesToVtt(cues);
   }
   // A standalone .ass/.ssa file: same dialogue rules as the embedded kind, timings from Start/End.
   function assFileToVtt(txt) {
@@ -928,11 +1004,7 @@
       );
       if (c) cues.push({ start, end, text: c.body, line: c.line });
     }
-    cues.sort((a, b) => a.start - b.start);
-    let out = 'WEBVTT\n\n';
-    for (const c of cues)
-      out += `${vttTime(c.start)} --> ${vttTime(c.end)}${c.line}\n${c.text}\n\n`;
-    return out;
+    return cuesToVtt(cues);
   }
 
   // ------------------------------------------------------------------ one entry point
@@ -985,6 +1057,7 @@
     assToVtt,
     assFileToVtt,
     srtToVtt,
+    decodeSubtitleBytes,
     vttTime,
     KINDS,
     extOf,

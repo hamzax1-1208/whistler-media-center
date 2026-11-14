@@ -120,13 +120,18 @@ function createMusicScreen() {
     view = newView;
     showItems();
   };
-  const buildModes = () => [
-    { label: 'Albums', isOn: view === 'albums', run: selectView('albums') },
-    { label: 'Artists', isOn: view === 'artists', run: selectView('artists') },
-    { label: 'Songs', isOn: view === 'songs', run: selectView('songs') },
-    { label: 'Genres', isOn: view === 'genres', run: selectView('genres') },
-    { label: 'Shuffle all', run: () => playTracks(tracks, 0, true) },
-  ];
+  const buildModes = () =>
+    withAddFolderMode(
+      [
+        { label: 'Albums', isOn: view === 'albums', run: selectView('albums') },
+        { label: 'Artists', isOn: view === 'artists', run: selectView('artists') },
+        { label: 'Songs', isOn: view === 'songs', run: selectView('songs') },
+        { label: 'Genres', isOn: view === 'genres', run: selectView('genres') },
+        { label: 'Shuffle all', run: () => playTracks(tracks, 0, true) },
+      ],
+      addFolder,
+      roots.length === 0,
+    );
 
   const createArtistTile = (artist) => {
     const albumWithCover = artist.members.find((album) => album.coverFile);
@@ -207,13 +212,26 @@ function createMusicScreen() {
     if (view === 'songs') screen.repaintItems();
   };
 
-  loadLibrary().catch((error) => {
+  function showLoadProblem(error) {
     reportProblem('Loading My Music', error);
     screen.updateSpec({
       loading: null,
       empty: { title: 'Your music could not be read.', hint: error.message },
     });
-  });
+  }
+
+  /** Asks for another folder for this library and reads the library again. */
+  async function addFolder() {
+    if (!mediaSource.local) {
+      openScreen(createComputerScreen()); // in server mode a folder is chosen from the drives
+      return;
+    }
+    if (!(await pickFolderIntoLibraries('music'))) return;
+    screen.updateSpec({ loading: 'Looking through your music folders', items: [] });
+    await loadLibrary().catch(showLoadProblem);
+  }
+
+  loadLibrary().catch(showLoadProblem);
   return screen;
 }
 

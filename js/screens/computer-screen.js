@@ -1,7 +1,8 @@
 'use strict';
 /* computer-screen.js — My Computer: the folders the user opened (or, in server mode, the
-   drives of the PC), and a file browser for any folder. A folder becomes part of a library
-   from here with "Use as Videos / Music / Pictures folder". */
+   drives of the PC), and a file browser for any folder. A folder that is opened goes into
+   the libraries it has files for by itself; "Use as Videos / Music / Pictures folder" in the
+   file browser changes that by hand, also for a folder inside it. */
 
 /**
  * Asks the user for a folder and reports a refusal in a message box.
@@ -17,6 +18,21 @@ async function pickFolderWithFeedback() {
   }
 }
 
+/**
+ * Asks the user for a folder and puts it into the libraries it has files for, so it shows
+ * up in My Videos, My Music and My Pictures without another step. A toast says where it went.
+ * @param {string} [wantedKind] 'videos', 'music' or 'pictures' when the user is adding a
+ *   folder to that library in particular
+ * @returns {Promise<{ path: string, name: string }|null>} null when nothing was picked
+ */
+async function pickFolderIntoLibraries(wantedKind) {
+  const folder = await pickFolderWithFeedback();
+  if (!folder) return null;
+  scanCache.clear();
+  showToast(await addFolderToLibraries(folder, wantedKind), 3500);
+  return folder;
+}
+
 /** @returns {object} the My Computer screen */
 function createComputerScreen() {
   const screen = createBrowseScreen({
@@ -29,11 +45,7 @@ function createComputerScreen() {
   });
 
   async function openFolderPicker() {
-    const folder = await pickFolderWithFeedback();
-    if (!folder) return;
-    scanCache.clear();
-    showToast(`Opened ${folder.name}`);
-    await loadPlaces();
+    if (await pickFolderIntoLibraries()) await loadPlaces();
   }
 
   const buildModes = () => {
@@ -97,13 +109,8 @@ function createComputerScreen() {
  */
 function createFolderScreen(folderPath) {
   const displayPath = mediaSource.displayPath(folderPath);
-  const folderName = baseName(displayPath);
+  const folderName = folderDisplayName(folderPath);
   const roots = appState.roots;
-  const LIBRARIES = [
-    { kind: 'videos', name: 'Videos' },
-    { kind: 'music', name: 'Music' },
-    { kind: 'pictures', name: 'Pictures' },
-  ];
   let sortBy = 'name'; // 'name' or 'date'
   let listing = null; // { parent, entries } once the folder has been read
 

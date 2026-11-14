@@ -133,9 +133,14 @@ const Source = (() => {
   function describeMatroskaTracks(matroskaInfo) {
     const TRACK_TYPE_AUDIO = 2;
     const TRACK_TYPE_SUBTITLE = 17;
+    const isSubtitle = (track) => track.type === TRACK_TYPE_SUBTITLE;
     const isTextSubtitle = (track) =>
-      track.type === TRACK_TYPE_SUBTITLE && /S_TEXT\/(UTF8|ASS|SSA)/i.test(track.codec);
+      isSubtitle(track) && /S_TEXT\/(UTF8|ASS|SSA)/i.test(track.codec);
     return {
+      // subtitles stored as pictures (Blu-ray PGS, DVD VobSub) cannot be shown by a browser
+      pictureSubtitleCount: matroskaInfo.tracks.filter(
+        (track) => isSubtitle(track) && !isTextSubtitle(track),
+      ).length,
       subs: matroskaInfo.tracks.filter(isTextSubtitle).map((track) => ({
         n: track.n,
         lang: track.lang,
@@ -606,6 +611,53 @@ const Source = (() => {
       return files.sort(naturalPathOrder);
     };
 
+    /**
+     * Looks through a folder for where its media lies, by file name only (no file is opened,
+     * so it is quick). For each kind it lists the subfolders directly inside the folder that
+     * hold some, with '' standing for the folder itself. Pictures that lie next to music or
+     * videos are covers and posters, not a photo collection, so they are not counted.
+     * @param {string} rootPath
+     * @param {{ budgetMs?: number }} [options] how long the look may take
+     * @returns {Promise<{ video: string[], audio: string[], image: string[] }>}
+     */
+    source.findMediaFolders = async (rootPath, options = {}) => {
+      const MAX_DEPTH = 8;
+      const deadline = Date.now() + (options.budgetMs || 5000);
+      const found = { video: new Set(), audio: new Set(), image: new Set() };
+      // topFolder: the subfolder of rootPath this branch is in ('' for rootPath itself)
+      const pending = [{ path: rootPath, depth: 0, topFolder: '' }];
+
+      while (pending.length > 0 && Date.now() < deadline) {
+        const { path, depth, topFolder } = pending.shift();
+        let hasPictures = false;
+        let hasOtherMedia = false;
+        try {
+          const directory = await directoryHandleFor(path);
+          for await (const [name, entry] of directory.entries()) {
+            if (entry.kind === 'directory') {
+              if (depth < MAX_DEPTH && !SKIPPED_FOLDERS.test(name)) {
+                const childPath = joinPath(path, name);
+                directoryCache.set(childPath, entry);
+                pending.push({ path: childPath, depth: depth + 1, topFolder: topFolder || name });
+              }
+              continue;
+            }
+            const kind = Parsers.kindOf(name);
+            if (kind === 'video' || kind === 'audio') {
+              found[kind].add(topFolder);
+              hasOtherMedia = true;
+            } else if (kind === 'image') {
+              hasPictures = true;
+            }
+          }
+        } catch (error) {
+          reportProblem(`Looking through ${path}`, error); // one unreadable folder: keep going
+        }
+        if (hasPictures && !hasOtherMedia) found.image.add(topFolder);
+      }
+      return { video: [...found.video], audio: [...found.audio], image: [...found.image] };
+    };
+
     // ------------------------------------------------ files
 
     /** @returns {string} a blob: URL a <video>, <audio> or <img> can play; made once per file */
@@ -682,23 +734,38 @@ const Source = (() => {
       return record.tags.folderCover ? source.urlFor(record.tags.folderCover) : null;
     };
 
-    /** The subtitle file next to a video: same name, .srt or .vtt; the shortest name wins. */
-    function findSidecar(videoRecord) {
-      const videoBaseName = videoRecord.name.replace(/\.[^.]+$/, '').toLowerCase();
-      const candidates = [...recordCache.values()].filter(
-        (record) =>
-          record.kind === 'subs' &&
-          record.dir === videoRecord.dir &&
-          /\.(srt|vtt)$/i.test(record.name) &&
-          record.name.toLowerCase().startsWith(videoBaseName),
-      );
-      candidates.sort((first, second) => first.name.length - second.name.length);
-      return candidates[0] || null;
+    /**
+     * The subtitle files next to a video: "Film.srt", "Film.tr.srt", "Film.en.ass"… The name
+     * must continue with a dot, so "Show - 1.mkv" does not take "Show - 10.srt".
+     * @returns {object[]} file records, the plainest name first
+     */
+    function findSidecars(videoRecord) {
+      const namePrefix = `${videoRecord.name.replace(/\.[^.]+$/, '').toLowerCase()}.`;
+      return [...recordCache.values()]
+        .filter(
+          (record) =>
+            record.kind === 'subs' &&
+            record.dir === videoRecord.dir &&
+            record.name.toLowerCase().startsWith(namePrefix),
+        )
+        .sort(
+          (first, second) =>
+            first.name.length - second.name.length || first.name.localeCompare(second.name),
+        );
     }
 
-    /** @returns {Promise<{ subs: object[], audio: object[], chapters: object[], sidecar: boolean }>} */
+    /**
+     * @returns {Promise<{ subs: object[], audio: object[], chapters: object[],
+     *   sidecars: Array<{ name: string }>, pictureSubtitleCount: number }>}
+     */
     source.loadTracks = async (record) => {
-      const tracks = { subs: [], audio: [], chapters: [], sidecar: Boolean(findSidecar(record)) };
+      const tracks = {
+        subs: [],
+        audio: [],
+        chapters: [],
+        sidecars: findSidecars(record).map((sidecar) => ({ name: sidecar.name })),
+        pictureSubtitleCount: 0,
+      };
       if (!/\.(mkv|webm)$/i.test(record.name)) return tracks;
       try {
         const matroskaInfo = await Parsers.mkvInfo(readerFor(record.file));
@@ -711,15 +778,19 @@ const Source = (() => {
 
     /**
      * @param {object} record a video file record
-     * @param {number|string} choice a subtitle track number, or 'file' for the file next to the video
+     * @param {number|string} choice a subtitle track number, or 'file:<name>' for a subtitle
+     *   file next to the video
      * @returns {Promise<string|null>} a blob: URL of the subtitles as WebVTT
      */
     source.subtitleUrl = async (record, choice, onProgress) => {
       let webVtt = null;
-      if (choice === 'file') {
-        const sidecar = findSidecar(record);
+      if (typeof choice === 'string') {
+        const sidecar = findSidecars(record).find(
+          (candidate) => `file:${candidate.name}` === choice,
+        );
         if (!sidecar) return null;
-        webVtt = Parsers.srtToVtt(await sidecar.file.text());
+        const bytes = new Uint8Array(await sidecar.file.arrayBuffer());
+        webVtt = Parsers.srtToVtt(Parsers.decodeSubtitleBytes(bytes));
       } else {
         // pulling a track out of a large file takes a moment, so the result is kept
         const cacheKey = `${record.path}|${choice}|${record.size}|${record.mtime}`;
@@ -812,6 +883,7 @@ const Source = (() => {
     source.isSupported = () => true;
     source.reconnect = async () => true;
     source.pickFolder = async () => null;
+    source.findMediaFolders = async () => ({ video: [], audio: [], image: [] });
     source.missingFolders = () => [];
     source.reconnectMissing = async () => false;
     source.rootLabel = (path) => path;
@@ -850,11 +922,15 @@ const Source = (() => {
     };
     source.loadTracks = async (record) => {
       const response = await fetch(apiUrl('tracks', { path: record.path }));
-      return response.ok ? response.json() : { subs: [], audio: [], chapters: [], sidecar: false };
+      if (response.ok) return response.json();
+      return { subs: [], audio: [], chapters: [], sidecars: [], pictureSubtitleCount: 0 };
     };
     source.subtitleUrl = async (record, choice) => {
+      // 'file:<name>' is a subtitle file next to the video; a number is a track inside it
       const parameters =
-        choice === 'file' ? { path: record.path } : { path: record.path, track: choice };
+        typeof choice === 'string'
+          ? { path: record.path, file: choice.slice('file:'.length) }
+          : { path: record.path, track: choice };
       const url = apiUrl('subs', parameters);
       const response = await fetch(url);
       return response.ok ? url : null;

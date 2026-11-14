@@ -14,6 +14,7 @@ const videoPlayer = (() => {
   const CHAPTERLESS_SKIP_SECONDS = 90;
   const HOLD_TO_SCAN_MS = 450;
   const OSD_HIDE_DELAY_MS = 3000;
+  const LIFTED_SUBTITLE_LINE = -5; // text lines up from the bottom: clear of the on-screen display
   const RESUME_SAVE_INTERVAL_MS = 5000;
   const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -22,8 +23,13 @@ const videoPlayer = (() => {
     queue: [], // { file, path, label, series }
     index: -1,
     trackInfo: null, // subtitle tracks, audio tracks and chapters of the current file
-    subtitleChoice: 'off', // 'off', 'file' (next to the video), 'loaded' (picked by hand) or a track number
+    // 'off', 'file:<name>' (a subtitle file next to the video), 'loaded' (a file opened by
+    // hand) or the number of a track inside the video
+    subtitleChoice: 'off',
     lastSubtitleChoice: null,
+    // what the viewer chose by hand, kept for the next episodes of the same queue:
+    // { kind: 'off' }, { kind: 'track', language, name } or { kind: 'file', tag }
+    rememberedSubtitle: null,
     subtitleUrl: null,
     loadedSubtitle: null, // { name, url, forPath } of a subtitle file the user opened
     speed: 1,
@@ -83,10 +89,21 @@ const videoPlayer = (() => {
     und: 'Unknown',
   };
 
+  /** The browser's own list of language names, for the codes the table above does not have. */
+  const browserLanguageNames =
+    typeof Intl !== 'undefined' && Intl.DisplayNames
+      ? new Intl.DisplayNames(['en'], { type: 'language', fallback: 'none' })
+      : null;
+
   /** "eng" or "en-US" -> "English". An unknown code is returned as it is. */
   function languageName(code) {
     const baseCode = (code || 'und').toLowerCase().split('-')[0];
-    return LANGUAGE_NAMES[baseCode] || code;
+    if (LANGUAGE_NAMES[baseCode]) return LANGUAGE_NAMES[baseCode];
+    try {
+      return (browserLanguageNames && browserLanguageNames.of(baseCode)) || code;
+    } catch {
+      return code; // not a language code at all
+    }
   }
 
   /** The language of a subtitle track, from its tag or, failing that, from its name. */
@@ -104,27 +121,58 @@ const videoPlayer = (() => {
     const language = trackLanguage(track);
     const trackName = (track.name || '').trim();
     let label = language;
-    if (language === 'Unknown' && trackName) label = trackName;
-    else if (trackName && trackName.toLowerCase() !== language.toLowerCase())
-      label = `${language} – ${trackName}`;
+    // a name that already says the language ("Spanish (Latin America)") stands on its own
+    const nameSaysLanguage = trackName.toLowerCase().includes(language.toLowerCase());
+    if (trackName && (language === 'Unknown' || nameSaysLanguage)) label = trackName;
+    else if (trackName) label = `${language} – ${trackName}`;
     return label + (track.forced ? ' (forced)' : '');
+  }
+
+  // ---- subtitle files next to the video ("Film.tr.srt")
+
+  const sidecars = () => (state.trackInfo && state.trackInfo.sidecars) || [];
+  const sidecarChoice = (sidecar) => `file:${sidecar.name}`;
+  const isSidecarChoice = (choice) => typeof choice === 'string' && choice.startsWith('file:');
+
+  /** "Film.tr.srt" next to "Film.mkv" -> "tr"; "Film.srt" -> "". */
+  function sidecarTag(sidecar) {
+    const item = currentItem();
+    const videoBaseName = item ? stripExtension(item.file.name) : '';
+    return stripExtension(sidecar.name)
+      .slice(videoBaseName.length)
+      .replace(/^\./, '')
+      .toLowerCase();
+  }
+
+  /** The language a subtitle file is marked with in its name, or null. */
+  function sidecarLanguage(sidecar) {
+    const knownNames = Object.values(LANGUAGE_NAMES).filter((name) => name !== 'Unknown');
+    for (const word of sidecarTag(sidecar).split(/[.\-_ ]+/)) {
+      if (word !== 'und' && LANGUAGE_NAMES[word]) return LANGUAGE_NAMES[word];
+      const spelledOut = knownNames.find((name) => name.toLowerCase() === word);
+      if (spelledOut) return spelledOut;
+    }
+    return null;
+  }
+
+  /** What the menu calls a subtitle file: its language, else its tag, else a plain name. */
+  function sidecarLabel(sidecar) {
+    return sidecarLanguage(sidecar) || sidecarTag(sidecar) || 'Subtitle file next to the video';
   }
 
   /** The name of the subtitles that are showing, for the menu and the toast. */
   function currentSubtitleName() {
-    switch (state.subtitleChoice) {
-      case 'off':
-        return 'Off';
-      case 'file':
-        return 'Subtitle file';
-      case 'loaded':
-        return state.loadedSubtitle ? state.loadedSubtitle.name : 'Off';
-      default: {
-        const tracks = state.trackInfo ? state.trackInfo.subs : [];
-        const track = tracks.find((candidate) => candidate.n === state.subtitleChoice);
-        return track ? subtitleLabel(track) : 'Off';
-      }
+    const choice = state.subtitleChoice;
+    if (choice === 'off') return 'Off';
+    if (choice === 'loaded') return state.loadedSubtitle ? state.loadedSubtitle.name : 'Off';
+    if (isSidecarChoice(choice)) {
+      const sidecar = sidecars().find((candidate) => sidecarChoice(candidate) === choice);
+      if (!sidecar) return 'Off';
+      return sidecarLanguage(sidecar) ? `${sidecarLabel(sidecar)} (file)` : 'Subtitle file';
     }
+    const tracks = state.trackInfo ? state.trackInfo.subs : [];
+    const track = tracks.find((candidate) => candidate.n === choice);
+    return track ? subtitleLabel(track) : 'Off';
   }
 
   // ---------------------------------------------------------------- on-screen display
@@ -132,11 +180,38 @@ const videoPlayer = (() => {
   /** Shows the on-screen display and hides it again after a few seconds of playback. */
   function showOsd() {
     playerElement.classList.remove('osd-hidden');
+    liftSubtitles();
     clearTimeout(state.hideOsdTimer);
     state.hideOsdTimer = setTimeout(() => {
-      if (!video.paused && !state.scanSpeed && !state.menu)
-        playerElement.classList.add('osd-hidden');
+      if (video.paused || state.scanSpeed || state.menu) return;
+      playerElement.classList.add('osd-hidden');
+      liftSubtitles();
     }, OSD_HIDE_DELAY_MS);
+  }
+
+  /**
+   * Keeps the subtitles readable: while the on-screen display is showing, the lines at the
+   * bottom of the picture move up above it, and come back down when it hides. Lines with a
+   * place of their own (the top of the picture) are left alone.
+   */
+  function liftSubtitles() {
+    const isOsdShowing = !playerElement.classList.contains('osd-hidden');
+    const wantedLine = isOsdShowing ? LIFTED_SUBTITLE_LINE : 'auto';
+    for (const track of video.textTracks) {
+      let hasMoved = false;
+      for (const cue of track.cues || []) {
+        const isBottomCue =
+          cue.snapToLines && (cue.line === 'auto' || cue.line === LIFTED_SUBTITLE_LINE);
+        if (!isBottomCue || cue.line === wantedLine) continue;
+        cue.line = wantedLine;
+        hasMoved = true;
+      }
+      // a line already on screen keeps its old place until the track is drawn afresh
+      if (hasMoved && track.mode === 'showing') {
+        track.mode = 'hidden';
+        track.mode = 'showing';
+      }
+    }
   }
 
   /** How far the file is loaded past the current position, in seconds. */
@@ -215,10 +290,9 @@ const videoPlayer = (() => {
     trackElement.src = url;
     trackElement.default = true;
     video.appendChild(trackElement);
-    // the track only exists for the video a moment after it is added
-    setTimeout(() => {
-      if (video.textTracks[0]) video.textTracks[0].mode = 'showing';
-    }, 50);
+    trackElement.track.mode = 'showing';
+    // the cues arrive a moment later; place them once they are there
+    trackElement.addEventListener('load', liftSubtitles);
   }
 
   function applySubtitleSize() {
@@ -226,13 +300,61 @@ const videoPlayer = (() => {
   }
 
   /**
-   * Chooses the subtitles a video starts with: the preferred language, full dialogue rather
-   * than signs and songs, then a file next to the video, then anything.
+   * Notes what the viewer chose by hand, so the next episode starts the same way: the same
+   * language and track name, the same kind of subtitle file, or no subtitles.
+   * @param {number|string} choice a track number, 'file:<name>', 'loaded' or 'off'
+   */
+  function rememberSubtitleChoice(choice) {
+    if (choice === 'off') {
+      state.rememberedSubtitle = { kind: 'off' };
+    } else if (isSidecarChoice(choice)) {
+      const sidecar = sidecars().find((candidate) => sidecarChoice(candidate) === choice);
+      state.rememberedSubtitle = sidecar ? { kind: 'file', tag: sidecarTag(sidecar) } : null;
+    } else if (typeof choice === 'number') {
+      const tracks = state.trackInfo ? state.trackInfo.subs : [];
+      const track = tracks.find((candidate) => candidate.n === choice);
+      state.rememberedSubtitle = track
+        ? { kind: 'track', language: trackLanguage(track), name: track.name }
+        : null;
+    } else {
+      state.rememberedSubtitle = null; // a file opened by hand belongs to one video only
+    }
+  }
+
+  /**
+   * The subtitles matching what the viewer chose earlier in this queue, if this video has them.
+   * @returns {number|string|null} a choice, or null when nothing was chosen or nothing matches
+   */
+  function pickRememberedSubtitle(trackInfo) {
+    const remembered = state.rememberedSubtitle;
+    if (!remembered) return null;
+    if (remembered.kind === 'off') return 'off';
+    if (remembered.kind === 'file') {
+      const sameFile = trackInfo.sidecars.find((sidecar) => sidecarTag(sidecar) === remembered.tag);
+      return sameFile ? sidecarChoice(sameFile) : null;
+    }
+    const sameLanguage = trackInfo.subs.filter(
+      (track) => trackLanguage(track) === remembered.language,
+    );
+    const sameTrack =
+      sameLanguage.find((track) => track.name === remembered.name) ||
+      sameLanguage.find((track) => !track.forced);
+    return sameTrack ? sameTrack.n : null;
+  }
+
+  /**
+   * Chooses the subtitles a video starts with. What the viewer picked for the episode
+   * before comes first. Otherwise: a subtitle file marked with the preferred language, a
+   * track in that language (full dialogue rather than signs and songs), any subtitle file
+   * next to the video, then any track.
    * @param {object} trackInfo
-   * @returns {number|string} a track number, 'file' or 'off'
+   * @returns {number|string} a track number, 'file:<name>' or 'off'
    */
   function pickSubtitle(trackInfo) {
+    const remembered = pickRememberedSubtitle(trackInfo);
+    if (remembered !== null) return remembered;
     if (getSetting('subtitles') === 'off') return 'off';
+
     const preferredLanguage = languageName(getSetting('subtitleLang') || 'eng');
     const candidates = trackInfo.subs.filter((track) => !track.forced);
     const isSignsTrack = (track) => /sign|song/i.test(track.name);
@@ -242,30 +364,36 @@ const videoPlayer = (() => {
       tracks.find((track) => !isSignsTrack(track)) ||
       tracks[0];
 
+    const fileInPreferredLanguage = trackInfo.sidecars.find(
+      (sidecar) => sidecarLanguage(sidecar) === preferredLanguage,
+    );
+    if (fileInPreferredLanguage) return sidecarChoice(fileInPreferredLanguage);
     const inPreferredLanguage = bestOf(
       candidates.filter((track) => trackLanguage(track) === preferredLanguage),
     );
     if (inPreferredLanguage) return inPreferredLanguage.n;
-    if (trackInfo.sidecar) return 'file';
+    if (trackInfo.sidecars.length > 0) return sidecarChoice(trackInfo.sidecars[0]);
     const anyTrack = bestOf(candidates);
     return anyTrack ? anyTrack.n : 'off';
   }
 
   /**
    * Switches to a subtitle track (or off).
-   * @param {number|string} choice a track number, 'file' or 'off'
-   * @param {boolean} announce show a toast about the result
+   * @param {number|string} choice a track number, 'file:<name>' or 'off'
+   * @param {boolean} announce true when the viewer asked for it: show a toast about the
+   *   result and remember the choice for the next episode
    */
   async function applySubtitle(choice, announce) {
     const item = currentItem();
     state.subtitleChoice = choice;
     if (choice !== 'off') state.lastSubtitleChoice = choice;
+    if (announce) rememberSubtitleChoice(choice);
     clearSubtitleTracks();
     if (choice === 'off') {
       if (announce) showToast('Subtitles off', 900);
       return;
     }
-    if (announce && mediaSource.local && choice !== 'file')
+    if (announce && mediaSource.local && typeof choice === 'number')
       showToast('Reading subtitles from the file…', 2500);
 
     let url = null;
@@ -293,24 +421,10 @@ const videoPlayer = (() => {
   function applyLoadedSubtitle(subtitle, announce) {
     state.subtitleChoice = 'loaded';
     state.lastSubtitleChoice = 'loaded';
+    if (announce) rememberSubtitleChoice('loaded');
     clearSubtitleTracks(false);
     addSubtitleTrack(subtitle.url, subtitle.name);
     if (announce) showToast(`Subtitles: ${subtitle.name}`, 1400);
-  }
-
-  /**
-   * Decodes a subtitle file: UTF-16 with a byte order mark, UTF-8, or Windows-1254
-   * (common for Turkish releases) when the UTF-8 reading comes out damaged.
-   * @param {Uint8Array} bytes
-   * @returns {string}
-   */
-  function decodeSubtitleBytes(bytes) {
-    if (bytes[0] === 0xff && bytes[1] === 0xfe)
-      return new TextDecoder('utf-16le').decode(bytes.subarray(2));
-    if (bytes[0] === 0xfe && bytes[1] === 0xff)
-      return new TextDecoder('utf-16be').decode(bytes.subarray(2));
-    const asUtf8 = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-    return asUtf8.includes('�') ? new TextDecoder('windows-1254').decode(bytes) : asUtf8;
   }
 
   /** Lets the user open an .srt, .vtt, .ass or .ssa file from anywhere on disk. */
@@ -325,8 +439,10 @@ const videoPlayer = (() => {
       fileInput.remove();
       if (!chosenFile) return;
       try {
-        const text = decodeSubtitleBytes(new Uint8Array(await chosenFile.arrayBuffer()));
-        const webVtt = Parsers.srtToVtt(text);
+        const bytes = new Uint8Array(await chosenFile.arrayBuffer());
+        const webVtt = Parsers.srtToVtt(Parsers.decodeSubtitleBytes(bytes));
+        // a file with no readable cue at all is some other kind of text file
+        if (!webVtt.includes('-->')) throw new Error('No subtitle lines found in the file');
         const url = URL.createObjectURL(new Blob([webVtt], { type: 'text/vtt' }));
         const item = currentItem();
         state.loadedSubtitle = { name: chosenFile.name, url, forPath: item && item.path };
@@ -355,9 +471,15 @@ const videoPlayer = (() => {
       return;
     }
     let choice = state.lastSubtitleChoice;
-    if (choice === null && (trackInfo.subs.length > 0 || trackInfo.sidecar)) {
+    // a choice left over from the video before may not exist in this one
+    const existsHere =
+      trackInfo.subs.some((track) => track.n === choice) ||
+      trackInfo.sidecars.some((sidecar) => sidecarChoice(sidecar) === choice);
+    if (!existsHere) {
       const firstFullTrack = trackInfo.subs.find((track) => !track.forced);
-      choice = firstFullTrack ? firstFullTrack.n : 'file';
+      if (firstFullTrack) choice = firstFullTrack.n;
+      else if (trackInfo.sidecars.length > 0) choice = sidecarChoice(trackInfo.sidecars[0]);
+      else choice = null;
     }
     if (choice === null) showToast('No subtitles in this file', 1200);
     else applySubtitle(choice, true);
@@ -467,7 +589,7 @@ const videoPlayer = (() => {
   }
 
   function buildMainMenuItems() {
-    const trackInfo = state.trackInfo || { subs: [], audio: [], chapters: [], sidecar: false };
+    const trackInfo = state.trackInfo || { subs: [], audio: [], chapters: [] };
     const items = [
       {
         label: video.paused ? 'Play' : 'Pause',
@@ -585,17 +707,18 @@ const videoPlayer = (() => {
   }
 
   function openSubtitlesMenu() {
-    const trackInfo = state.trackInfo || { subs: [], sidecar: false };
+    const trackInfo = state.trackInfo || { subs: [], sidecars: [], pictureSubtitleCount: 0 };
     const choose = (choice) => () => {
       applySubtitle(choice, true);
       closeMenu();
     };
     const items = [{ label: 'Off', isOn: state.subtitleChoice === 'off', run: choose('off') }];
-    if (trackInfo.sidecar) {
+    for (const sidecar of trackInfo.sidecars) {
       items.push({
-        label: 'Subtitle file next to the video',
-        isOn: state.subtitleChoice === 'file',
-        run: choose('file'),
+        label: sidecarLabel(sidecar),
+        value: `${Parsers.extOf(sidecar.name).toUpperCase()} FILE`,
+        isOn: state.subtitleChoice === sidecarChoice(sidecar),
+        run: choose(sidecarChoice(sidecar)),
       });
     }
     for (const track of trackInfo.subs) {
@@ -625,9 +748,22 @@ const videoPlayer = (() => {
         pickSubtitleFile();
       },
     });
-    if (trackInfo.subs.length === 0 && !trackInfo.sidecar && !state.loadedSubtitle) {
-      const note = state.trackInfo ? 'No subtitle tracks in this file' : 'Still reading the file…';
-      items.splice(1, 0, { label: note, run: () => {} });
+    const hasNothingToShow =
+      trackInfo.subs.length === 0 && trackInfo.sidecars.length === 0 && !state.loadedSubtitle;
+    if (!state.trackInfo) {
+      items.splice(1, 0, { label: 'Still reading the file…', run: () => {} });
+    } else if (trackInfo.pictureSubtitleCount > 0) {
+      // Blu-ray and DVD subtitles are pictures, which only a real player can draw
+      const count = trackInfo.pictureSubtitleCount;
+      const note = `${pluralize(count, 'picture subtitle track')} (PGS / VobSub)`;
+      const explain = () =>
+        showToast(
+          "A browser can't show subtitles stored as pictures. Open a subtitle file instead.",
+          4000,
+        );
+      items.splice(1, 0, { label: note, value: "CAN'T SHOW", run: explain });
+    } else if (hasNothingToShow) {
+      items.splice(1, 0, { label: 'No subtitle tracks in this file', run: () => {} });
     }
     openMenu(
       'subtitles',
@@ -789,6 +925,8 @@ const videoPlayer = (() => {
     }
     musicPlayer.audio.pause();
     state.queue = queue;
+    state.rememberedSubtitle = null; // a new queue starts from the saved preferences again
+    state.lastSubtitleChoice = null;
     state.isOpen = true;
     playerElement.hidden = false;
     keyLegend.hidden = true;

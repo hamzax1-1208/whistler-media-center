@@ -17,8 +17,9 @@ ile doğrudan okur; bütün dosya çözümleyicileri (ID3, FLAC, MP4, Matroska a
 tarayıcının içinde çalışır.
 
 **Çalıştırma.** `index.html` dosyasını Chrome veya Edge ile açmak yeterlidir. Bilgisayarım
-ekranında "Open a folder…" ile bir klasör seçilir (ya da klasör sayfaya sürüklenir), sol sütundan
-"Use as Videos / Music / Pictures folder" ile kütüphaneye eklenir.
+ekranında "Open a folder…" ile (ya da Videolarım / Müziğim / Resimlerim ekranındaki "Add a
+folder…" ile) bir klasör seçilir veya klasör sayfaya sürüklenir. Uygulama klasörün içine bakar
+ve onu içindeki dosya türüne göre kendiliğinden doğru kütüphaneye ekler; ayrıca bir adım gerekmez.
 
 **Anahtar özellikler**
 
@@ -107,9 +108,17 @@ other words, is load-bearing.
 ## Run it
 
 Open `index.html` in **Chrome or Edge**, or host the folder anywhere static (GitHub Pages, a
-NAS, a USB stick). First visit: My Computer, _Open a folder…_, pick your anime folder, choose
-_Use as Videos folder_. The browser remembers the folder between sessions and asks for a
-one-key nod before reading it again.
+NAS, a USB stick). First visit: My Videos (or My Music, My Pictures), _Add a folder…_, pick the
+folder. The browser remembers the folder between sessions and asks for a one-key nod before
+reading it again.
+
+**A folder sorts itself into the libraries.** When a folder is opened (picked from any screen,
+or dropped on the page) the page looks through it by file name and adds it to the libraries it
+has files for: videos to My Videos, songs to My Music, photos to My Pictures. A folder that
+mixes kinds (a "Media" folder with Videos, Music and Pictures inside) is split, so each
+library gets the subfolders that hold its kind. Pictures lying next to music or videos are
+covers and posters and do not make a folder a photo folder. _Use as Videos / Music / Pictures
+folder_ in My Computer changes any of this by hand.
 
 Every parser (ID3, FLAC, MP4, Matroska subtitles) runs in the page. How the page gets at the
 folder depends on the browser:
@@ -119,8 +128,10 @@ folder depends on the browser:
 | Chrome, Edge    | _Open a folder…_ (File System Access API), or drop a folder on the page | Remembered; one keypress to reconnect                                                                                    |
 | Firefox, Safari | _Open a folder…_ (a folder picker), or drop a folder on the page        | Forgotten by the browser; the page asks you to pick the same folder again, and your library and resume points carry over |
 
-Playback is whatever the browser decodes. Tested here on Firefox 156: H.264 and AV1 in MKV
-play, MP4 plays, HEVC does not. Chromium plays HEVC when the HEVC Video Extension is installed.
+Playback is whatever the browser decodes. Tested here on Firefox 160 and Edge: H.264 in MKV
+and MP4 plays in both, and every screen, form, subtitle and folder check passes in both. AV1
+and HEVC were last tried on Firefox 156: AV1 in MKV played, HEVC did not. Chromium plays HEVC
+when the HEVC Video Extension is installed.
 
 There is also an **optional** `server.js` (Node, zero dependencies) for two cases: watching
 from another device on the LAN, and browsers without folder access. `node server.js --open`
@@ -165,20 +176,28 @@ before anything is saved.
 
 Press **Up** (or click OPTIONS) for the options menu:
 
-| Option                                                                                                    | What it does                                                                                                                                                              |
-| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Subtitles                                                                                                 | Every subtitle track embedded in the MKV (SRT and ASS), plus a sidecar `.srt`/`.vtt`. Listed by language and name, so "Full Subtitles" and "Signs & Songs" are told apart |
-| Audio                                                                                                     | Lists the audio tracks. A browser cannot switch between them; the file's default plays                                                                                    |
-| Chapters                                                                                                  | The MKV's chapter list to jump to. `,` and `.` step through them, or skip 90 s without chapters                                                                           |
-| Speed, Picture (fit/fill), Subtitle size, Full screen, Restart, Next episode, Mark as watched, Key legend |                                                                                                                                                                           |
+| Option                                                                                                    | What it does                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Subtitles                                                                                                 | Every subtitle track embedded in the MKV (SRT and ASS), plus every subtitle file next to the video. Listed by language and name, so "Full Subtitles" and "Signs & Songs" are told apart |
+| Audio                                                                                                     | Lists the audio tracks. A browser cannot switch between them; the file's default plays                                                                                                  |
+| Chapters                                                                                                  | The MKV's chapter list to jump to. `,` and `.` step through them, or skip 90 s without chapters                                                                                         |
+| Speed, Picture (fit/fill), Subtitle size, Full screen, Restart, Next episode, Mark as watched, Key legend |                                                                                                                                                                                         |
 
 Other keys: Enter pauses, Left/Right tap seeks 10 s and holding scans at 2/4/8x, N/P skip
 episodes, S toggles subtitles, + and − (or the wheel) change volume, M mutes, F full screen,
 H shows the key legend. Gamepads work: A opens, B goes back, Y opens options, X toggles
 subtitles. With a mouse or a finger: CC, OPTIONS and STOP sit on the picture.
 
-A subtitle track is picked automatically from the preferred language in Settings, preferring
-"Full" or "Dialogue" tracks over signs, then a sidecar, then anything.
+Subtitles are picked automatically: a subtitle file marked with the preferred language from
+Settings (`Film.tr.srt`), then a track in that language ("Full" or "Dialogue" before signs),
+then any subtitle file next to the video, then anything. A choice made by hand, including
+"Off", carries over to the next episodes of the same series.
+
+**Subtitle files next to a video** (`Film.srt`, `Film.tr.srt`, `Film.en.ass`, `.vtt`, `.ssa`)
+are all listed in the menu, by the language in their name. They are read as UTF-8, UTF-16 or
+Windows-1254, the usual encoding of older Turkish subtitle files. Sloppy `.srt` files are
+accepted: one-digit hours, a dot instead of a comma, missing counters, `{\an8}` for the top of
+the picture.
 
 **Embedded subtitles without ffmpeg:** the page walks the Matroska file cluster by cluster and
 pulls out only the blocks of the chosen track, converting ASS dialogue to WebVTT. Blocks that
@@ -188,8 +207,8 @@ table is read too, so top-aligned and italic styles come through. Positioned typ
 sign/song styles are dropped. The result is cached in the browser so the second time is instant.
 
 **A file with no subtitle track** (a dubbed movie, say): Subtitles › _Open a subtitle file…_
-takes an .srt, .vtt, .ass or .ssa from anywhere on disk, in UTF-8, UTF-16 or Windows-1254.
-A file with the same name next to the video is picked up automatically.
+takes an .srt, .vtt, .ass or .ssa from anywhere on disk, in the same encodings. Subtitles
+stored as pictures (Blu-ray PGS, DVD VobSub) cannot be drawn by a browser; the menu says so.
 
 Partially synced cloud files read as zeros past a point; the walker resyncs to the next
 cluster and returns what it can.

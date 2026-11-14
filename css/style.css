@@ -642,7 +642,7 @@
   .row-list .row-item .row-equalizer span {
     display: block;
     width: 2px;
-    background: #fff;
+    background: currentColor; /* the row's text colour, so the bars show on a white list too */
   }
   .row-list .row-item.is-playing .row-equalizer {
     display: flex;

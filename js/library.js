@@ -57,8 +57,124 @@ function describeMissingRoots(libraryName) {
     : 'This browser forgets folders between sessions, so you pick again next time.';
   return {
     title,
-    hint: `Go to My Computer, choose Open a folder… (or drop a folder onto this page), then pick "Use as ${libraryName} folder" from the left column. ${memoryNote}`,
+    hint: `Choose Add a folder… and pick the folder your ${libraryName.toLowerCase()} are in, or drop it onto this page. ${memoryNote}`,
   };
+}
+
+// ---------------------------------------------------------------- library folders
+
+/**
+ * The name of a folder as the user knows it. A folder opened in the browser is stored under
+ * an id, so its own path does not say what it is called; its display path does.
+ * @param {string} folderPath
+ * @returns {string} for example "Holiday" for "Photos › 2024 › Holiday"
+ */
+function folderDisplayName(folderPath) {
+  return baseName(mediaSource.displayPath(folderPath).split(' › ').pop());
+}
+
+/** The three libraries: the key in appState.roots, the name on screen, the kind of file. */
+const LIBRARIES = [
+  { kind: 'videos', name: 'Videos', mediaKind: 'video' },
+  { kind: 'music', name: 'Music', mediaKind: 'audio' },
+  { kind: 'pictures', name: 'Pictures', mediaKind: 'image' },
+];
+
+/**
+ * Whether a library already shows a folder: the folder itself, one that contains it, or
+ * (the user set it up by hand) one or more folders inside it.
+ * @param {string} libraryKind 'videos', 'music' or 'pictures'
+ * @param {string} folderPath
+ * @returns {boolean}
+ */
+function isFolderInLibrary(libraryKind, folderPath) {
+  const wanted = folderPath.toLowerCase();
+  return appState.roots[libraryKind].some((root) => {
+    const existing = root.toLowerCase();
+    return (
+      existing === wanted || existing.startsWith(`${wanted}/`) || wanted.startsWith(`${existing}/`)
+    );
+  });
+}
+
+/**
+ * Adds "Add a folder…" to the left column of a library screen: at the end normally, but
+ * first while the library is still empty, because then it is the one thing to do.
+ * @param {object[]} modes the screen's own entries
+ * @param {Function} addFolder what the entry runs
+ * @param {boolean} isLibraryEmpty
+ * @returns {object[]}
+ */
+function withAddFolderMode(modes, addFolder, isLibraryEmpty) {
+  const addFolderMode = { label: 'Add a folder…', run: addFolder };
+  return isLibraryEmpty ? [addFolderMode, ...modes] : [...modes, addFolderMode];
+}
+
+/**
+ * Decides which folders become library folders when a folder is opened.
+ * A folder with one kind of media goes in whole. A folder that mixes kinds ("Media" with
+ * Videos, Music and Pictures inside) is split: each library gets the subfolders that hold
+ * its kind, so My Pictures is not filled with album covers and loose films are not listed
+ * as a series called "Videos".
+ * @param {string} folderPath the folder that was opened
+ * @param {string[]} subfolders the subfolders holding this kind; '' is the folder itself
+ * @param {boolean} isMixed whether the folder holds more than one kind of media
+ * @returns {string[]} the paths to add to the library
+ */
+function chooseLibraryRoots(folderPath, subfolders, isMixed) {
+  const MAX_SEPARATE_SUBFOLDERS = 4; // more than this and the whole folder is simpler
+  if (subfolders.length === 0) return [];
+  const mustTakeWhole =
+    !isMixed || subfolders.includes('') || subfolders.length > MAX_SEPARATE_SUBFOLDERS;
+  if (mustTakeWhole) return [folderPath];
+  return subfolders.map((subfolder) => `${folderPath}/${subfolder}`);
+}
+
+/**
+ * Puts a folder the user just opened into the libraries it has files for, so its videos
+ * show up in My Videos, its songs in My Music and its photos in My Pictures straight away.
+ * @param {{ path: string, name: string }} folder what pickFolder or fromDrop returned
+ * @param {string} [wantedKind] 'videos', 'music' or 'pictures': the library the user was
+ *   adding to; the folder goes there whatever it holds
+ * @returns {Promise<string>} a sentence saying where the folder went, for a toast
+ */
+async function addFolderToLibraries(folder, wantedKind) {
+  if (!folder || typeof folder.path !== 'string') {
+    throw new TypeError('addFolderToLibraries needs the folder that was opened');
+  }
+  let found = { video: [], audio: [], image: [] };
+  try {
+    found = await mediaSource.findMediaFolders(folder.path);
+  } catch (error) {
+    reportProblem(`Looking through ${folder.name}`, error);
+  }
+  const kindCount = LIBRARIES.filter((library) => found[library.mediaKind].length > 0).length;
+
+  const fitting = []; // the libraries this folder belongs in
+  const added = []; // those of them that did not have it yet
+  for (const library of LIBRARIES) {
+    let roots = chooseLibraryRoots(folder.path, found[library.mediaKind], kindCount > 1);
+    if (roots.length === 0 && library.kind === wantedKind) roots = [folder.path];
+    if (roots.length === 0) continue;
+    fitting.push(library);
+    const newRoots = roots.filter((root) => !isFolderInLibrary(library.kind, root));
+    if (newRoots.length === 0) continue;
+    appState.roots[library.kind].push(...newRoots);
+    added.push(library);
+  }
+  if (added.length > 0) {
+    await saveRoots();
+    scanCache.clear();
+  }
+
+  const listNames = (libraries) =>
+    libraries
+      .map((library) => `My ${library.name}`)
+      .join(', ')
+      .replace(/, ([^,]*)$/, ' and $1');
+  if (added.length > 0) return `${folder.name} is now in ${listNames(added)}`;
+  if (fitting.length > 0) return `${folder.name} is already in ${listNames(fitting)}`;
+  return `Opened ${folder.name}, but found no videos, music or pictures in it`;
 }
 
 // ---------------------------------------------------------------- reading file names
@@ -327,7 +443,7 @@ function trackFromFile(file) {
     name: file.name,
     title: tags.title || stripExtension(file.name),
     artist: tags.artist || tags.albumArtist || 'Unknown artist',
-    album: tags.album || baseName(folder),
+    album: tags.album || folderDisplayName(folder),
     albumArtist: tags.albumArtist || tags.artist || 'Unknown artist',
     year: tags.year,
     trackNumber: tags.track,

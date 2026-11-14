@@ -4,11 +4,6 @@
 
 /** @returns {object} the Settings screen */
 function createSettingsScreen() {
-  const LIBRARIES = [
-    { kind: 'videos', name: 'Videos', rowKind: 'video' },
-    { kind: 'music', name: 'Music', rowKind: 'audio' },
-    { kind: 'pictures', name: 'Pictures', rowKind: 'image' },
-  ];
   let page = 'general'; // 'general', 'look', 'library' or 'about'
   let kiyoraFolders = null; // library folders of the Kiyora desktop app, when the server finds them
   let serverIsRunning = false;
@@ -221,8 +216,7 @@ function createSettingsScreen() {
       openScreen(createComputerScreen());
       return;
     }
-    const folder = await pickFolderWithFeedback();
-    if (folder) openScreen(createFolderScreen(folder.path));
+    if (await pickFolderIntoLibraries()) showPage();
   }
 
   async function importKiyoraFolders() {
@@ -251,8 +245,8 @@ function createSettingsScreen() {
         rows.push({
           label: displayPath,
           sub: library.name.toUpperCase(),
-          kind: library.rowKind,
-          title: [baseName(displayPath), `${library.name.toUpperCase()} · ${displayPath}`],
+          kind: library.mediaKind,
+          title: [folderDisplayName(root), `${library.name.toUpperCase()} · ${displayPath}`],
           run: () => removeLibraryFolder(library, root),
         });
       }
@@ -263,7 +257,7 @@ function createSettingsScreen() {
       title: [
         'Add a folder',
         mediaSource.local
-          ? 'Pick a folder; then choose "Use as … folder" from its left column'
+          ? 'Pick a folder; it goes into the libraries it has videos, music or pictures for'
           : 'Opens My Computer; pick a folder and choose "Use as … folder"',
       ],
       run: addLibraryFolder,

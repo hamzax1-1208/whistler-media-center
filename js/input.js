@@ -212,7 +212,10 @@ document.addEventListener('mousedown', (event) => {
 
 // ---------------------------------------------------------------- drag and drop
 
-/** Lets the user drop a folder (or files) onto the page; it opens like a picked folder. */
+/**
+ * Lets the user drop a folder (or files) onto the page; it opens like a picked folder and
+ * goes into the libraries it has files for.
+ */
 function installDropTarget() {
   window.addEventListener('dragover', (event) => {
     event.preventDefault();
@@ -245,7 +248,11 @@ function installDropTarget() {
       return;
     }
     scanCache.clear();
-    showToast(`Opened ${openedFolders.map((folder) => folder.name).join(', ')}`, 2000);
+    const notes = [];
+    for (const folder of openedFolders) notes.push(await addFolderToLibraries(folder));
+    showToast(notes.join(' · '), 3500);
+    // from the start screen, so the library screens are built again with the new folder
+    goHome();
     openScreen(createFolderScreen(openedFolders[0].path));
   });
 }

@@ -22,19 +22,24 @@ function createPicturesScreen() {
     sortBy = newSort;
     showFolders();
   };
-  const buildModes = () => [
-    {
-      label: 'Play slide show',
-      run: () =>
-        photoViewer.open(
-          folders.flatMap((folder) => folder.files),
-          0,
-          true,
-        ),
-    },
-    { label: 'Sort by name', isOn: sortBy === 'name', run: selectSort('name') },
-    { label: 'Sort by date', isOn: sortBy === 'date', run: selectSort('date') },
-  ];
+  const buildModes = () =>
+    withAddFolderMode(
+      [
+        {
+          label: 'Play slide show',
+          run: () =>
+            photoViewer.open(
+              folders.flatMap((folder) => folder.files),
+              0,
+              true,
+            ),
+        },
+        { label: 'Sort by name', isOn: sortBy === 'name', run: selectSort('name') },
+        { label: 'Sort by date', isOn: sortBy === 'date', run: selectSort('date') },
+      ],
+      addFolder,
+      roots.length === 0,
+    );
 
   /** A tile for a folder; its picture is a contact sheet of the first four pictures. */
   const createFolderTile = (folder) => ({
@@ -56,10 +61,8 @@ function createPicturesScreen() {
     const foldersByPath = new Map();
     for (const file of files) {
       if (!foldersByPath.has(file.dir)) {
-        // pictures lying directly in a library folder take that folder's display name
-        const displayPath = file.dir === file.root ? mediaSource.rootLabel(file.dir) : file.dir;
         foldersByPath.set(file.dir, {
-          name: baseName(displayPath),
+          name: folderDisplayName(file.dir),
           dir: file.dir,
           files: [],
           mtime: 0,
@@ -105,13 +108,26 @@ function createPicturesScreen() {
     showFolders();
   }
 
-  loadLibrary().catch((error) => {
+  function showLoadProblem(error) {
     reportProblem('Loading My Pictures', error);
     screen.updateSpec({
       loading: null,
       empty: { title: 'Your pictures could not be read.', hint: error.message },
     });
-  });
+  }
+
+  /** Asks for another folder for this library and reads the library again. */
+  async function addFolder() {
+    if (!mediaSource.local) {
+      openScreen(createComputerScreen()); // in server mode a folder is chosen from the drives
+      return;
+    }
+    if (!(await pickFolderIntoLibraries('pictures'))) return;
+    screen.updateSpec({ loading: 'Looking through your picture folders', items: [] });
+    await loadLibrary().catch(showLoadProblem);
+  }
+
+  loadLibrary().catch(showLoadProblem);
   return screen;
 }
 

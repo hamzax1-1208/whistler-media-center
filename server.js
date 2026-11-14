@@ -311,22 +311,24 @@ async function scanTree(root, kinds, opts) {
   );
   return { files, truncated: queue.length > 0 };
 }
-async function findSidecar(video) {
-  const dir = path.dirname(video);
-  const base = path
-    .basename(video)
-    .replace(/\.[^.]+$/, '')
-    .toLowerCase();
+// The subtitle files next to a video ("Film.srt", "Film.tr.srt", "Film.en.ass"…), as file
+// names, the plainest first. The name must continue with a dot, so "Show - 1.mkv" does not
+// take "Show - 10.srt".
+async function findSidecars(video) {
+  const prefix =
+    path
+      .basename(video)
+      .replace(/\.[^.]+$/, '')
+      .toLowerCase() + '.';
   let names;
   try {
-    names = await fsp.readdir(dir);
+    names = await fsp.readdir(path.dirname(video));
   } catch {
-    return null;
+    return [];
   }
-  const cands = names.filter((n) => n.toLowerCase().startsWith(base) && /\.(srt|vtt)$/i.test(n));
-  if (!cands.length) return null;
-  cands.sort((a, b) => a.length - b.length);
-  return path.join(dir, cands[0]);
+  return names
+    .filter((n) => n.toLowerCase().startsWith(prefix) && P.kindOf(n) === 'subs')
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
 }
 
 // ---------------------------------------------------------------- HTTP
@@ -498,14 +500,13 @@ async function handleApi(req, res, u) {
         const st = await fsp.stat(f);
         vtt = await cachedSubs(f, parseInt(track, 10), st.mtimeMs);
       } else {
-        const sc = await findSidecar(f);
-        if (sc) {
-          let txt = await fsp.readFile(sc);
-          txt =
-            txt[0] === 0xff && txt[1] === 0xfe
-              ? txt.subarray(2).toString('utf16le')
-              : txt.toString('utf8');
-          vtt = P.srtToVtt(txt);
+        // only a file that really is next to the video is read; without a name, the first one
+        const names = await findSidecars(f);
+        const wanted = q.get('file');
+        const name = wanted == null ? names[0] : names.find((n) => n === wanted);
+        if (name) {
+          const bytes = await fsp.readFile(path.join(path.dirname(f), name));
+          vtt = P.srtToVtt(P.decodeSubtitleBytes(bytes));
         }
       }
       if (!vtt) return send(res, 404, 'no subs');
@@ -513,13 +514,23 @@ async function handleApi(req, res, u) {
     }
     case 'tracks': {
       const f = p();
-      const out = { subs: [], audio: [], chapters: [], sidecar: !!(await findSidecar(f)) };
+      const out = {
+        subs: [],
+        audio: [],
+        chapters: [],
+        sidecars: (await findSidecars(f)).map((name) => ({ name })),
+        pictureSubtitleCount: 0, // PGS / VobSub tracks, which a browser cannot show
+      };
       if (/\.(mkv|webm)$/i.test(f)) {
         try {
           const info = await withReader(f, (r) => P.mkvInfo(r));
           if (info) {
+            const isText = (t) => /S_TEXT\/(UTF8|ASS|SSA)/i.test(t.codec);
+            out.pictureSubtitleCount = info.tracks.filter(
+              (t) => t.type === 17 && !isText(t),
+            ).length;
             out.subs = info.tracks
-              .filter((t) => t.type === 17 && /S_TEXT\/(UTF8|ASS|SSA)/i.test(t.codec))
+              .filter((t) => t.type === 17 && isText(t))
               .map((t) => ({
                 n: t.n,
                 lang: t.lang,
