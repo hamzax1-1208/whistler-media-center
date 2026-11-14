@@ -25,7 +25,7 @@ ve onu içindeki dosya türüne göre kendiliğinden doğru kütüphaneye ekler;
 
 - Kurulumsuz: klasör bir kez seçilir, tarayıcı hatırlar.
 - Üç tema: Media Center 2002 (gerçek kabuğun ölçülerinden), Whistler Beta 2 (Luna 2462) ve Netflix; **T** tuşuyla geçiş.
-- Videolarım: dosya adlarından dizi ve bölüm gruplama, kaldığı yerden devam, kare küçük resimleri, gömülü (MKV, SRT/ASS) ve yan altyazılar, bölüm listesi, otomatik sonraki bölüm.
+- Videolarım: dosya adlarından dizi ve bölüm gruplama, tek başına duran filmler için kendi adıyla ayrı karo, kaldığı yerden devam, kare küçük resimleri, gömülü (MKV, SRT/ASS) ve yan altyazılar, bölüm listesi, otomatik sonraki bölüm.
 - Müziğim: etiketlerden albüm / sanatçı / şarkı / tür, kapak resmi, çalma kuyruğu, karıştır, tekrar, Web Audio görselleştirici.
 - Resimlerim: klasör karoları, Ken Burns efektli slayt gösterisi.
 - Bilgisayarım ve Ayarlar: klasör bağlama, saat, altyazı dili, tema, ses efektleri, kaynak seçimi.
@@ -154,13 +154,13 @@ button; the colours stay with the theme.
 
 ## What's in it
 
-| Start menu  | What it does                                                                                                                                                                  |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| My Videos   | Groups scene-release names into series, episode lists with resume marks, frame thumbnails, embedded and sidecar subtitles, chapters, hold-to-scan, autoplay next              |
-| My Music    | Albums / Artists / Songs / Genres from real tags, embedded or folder cover art, now-playing with a Web Audio spectrum, queue, shuffle, repeat, keeps playing while you browse |
-| My Pictures | Folder tiles as 2x2 contact sheets, slide show with Ken Burns drift                                                                                                           |
-| My Computer | The folders you opened (or, in server mode, every drive). Any media file plays from here; any folder can be made a library folder from its left column                        |
-| Settings    | Clock, slide show, subtitles, theme, library folders, source, and the profile form                                                                                            |
+| Start menu  | What it does                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| My Videos   | Groups scene-release names into series, gives a film on its own a tile under its own name, episode lists with resume marks, frame thumbnails, embedded and sidecar subtitles, chapters, hold-to-scan, autoplay next |
+| My Music    | Albums / Artists / Songs / Genres from real tags, embedded or folder cover art, now-playing with a Web Audio spectrum, queue, shuffle, repeat, keeps playing while you browse                                       |
+| My Pictures | Folder tiles as 2x2 contact sheets, slide show with Ken Burns drift                                                                                                                                                 |
+| My Computer | The folders you opened (or, in server mode, every drive). Any media file plays from here; any folder can be made a library folder from its left column                                                              |
+| Settings    | Clock, slide show, subtitles, theme, library folders, source, and the profile form                                                                                                                                  |
 
 My TV and Play DVD are omitted rather than faked, same reasoning as Kiyora.
 

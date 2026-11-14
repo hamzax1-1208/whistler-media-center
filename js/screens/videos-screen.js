@@ -13,7 +13,8 @@ const SEASON_FOLDER = /^(?:season|s)\s*(\d{1,2})$/i;
  * @param {object} file a video file record
  * @param {(folder: string) => boolean} isLibraryRoot tells whether a folder is a library folder itself
  * @returns {{ seriesKey: string, seriesTitle: string, year: number|null, folder: string,
- *             season: number|null, episode: number|null, isExtra: boolean, episodeTitle: string|null }}
+ *             season: number|null, episode: number|null, isExtra: boolean, isFilm: boolean,
+ *             episodeTitle: string|null }}
  */
 function classifyVideo(file, isLibraryRoot) {
   const parsed = parseEpisode(file.name);
@@ -30,9 +31,10 @@ function classifyVideo(file, isLibraryRoot) {
       release = parseReleaseTitle(parsed.before || file.name);
       seriesKey = `title|${release.title.toLowerCase()}`;
     } else {
+      // a film on its own: it gets a tile of its own, named after the file
       isLoose = true;
-      release = { title: folderDisplayName(folder), year: null, season: null };
-      seriesKey = `root|${folder.toLowerCase()}`;
+      release = parseReleaseTitle(file.name);
+      seriesKey = `file|${file.path.toLowerCase()}`;
     }
   } else {
     // climb out of "Extras" and "Season 2" folders to reach the series folder
@@ -53,7 +55,7 @@ function classifyVideo(file, isLibraryRoot) {
   }
 
   let episodeTitle = '';
-  if (isLoose) episodeTitle = parseReleaseTitle(file.name).title;
+  if (isLoose) episodeTitle = release.title;
   else if (parsed.after) episodeTitle = parseReleaseTitle(parsed.after).title;
   if (!episodeTitle || /^v\d$/i.test(episodeTitle)) episodeTitle = null; // "v2" is a version, not a title
 
@@ -72,6 +74,7 @@ function classifyVideo(file, isLibraryRoot) {
     season,
     episode: isExtra || isLoose ? null : parsed.episode,
     isExtra,
+    isFilm: isLoose,
     episodeTitle,
   };
 }
@@ -89,7 +92,8 @@ function compareEpisodes(first, second) {
  * Groups video files into series.
  * @param {object[]} files video file records; each gets season, episode, isExtra and episodeTitle added
  * @param {string[]} roots the video library folders
- * @returns {Array<{ title: string, year: number|null, dir: string, episodes: object[], mtime: number }>}
+ * @returns {Array<{ title: string, year: number|null, dir: string, isFilm: boolean,
+ *                   episodes: object[], mtime: number }>}
  */
 function groupIntoSeries(files, roots) {
   const normalize = (folder) => folder.replace(/[\\/]+$/, '').toLowerCase();
@@ -104,6 +108,7 @@ function groupIntoSeries(files, roots) {
         title: details.seriesTitle,
         year: details.year,
         dir: details.folder,
+        isFilm: details.isFilm, // a single film rather than a series
         episodes: [],
         mtime: 0,
       });
@@ -213,8 +218,19 @@ function createVideosScreen() {
   const compareGroups = (first, second) =>
     sortBy === 'date' ? second.mtime - first.mtime : naturalCompare(first.title, second.title);
 
-  /** A tile for a series or a folder; its picture is a frame of the first episode. */
+  /** A tile for a film, a series or a folder; its picture is a frame of the first video. */
   const createGroupTile = (group) => {
+    if (group.isFilm) {
+      // a film has nothing to list: its tile plays it
+      const film = group.episodes[0];
+      return {
+        label: group.title,
+        kind: 'video',
+        title: [group.title, group.year ? `Film · ${group.year}` : 'Film'],
+        thumb: () => videoThumbnails.forVideo(film),
+        run: () => videoPlayer.open([toPlayerItem(film)], 0),
+      };
+    }
     const episodeCount = group.episodes.length;
     const yearNote = group.year ? ` · ${group.year}` : '';
     return {
@@ -226,6 +242,16 @@ function createVideosScreen() {
       run: () => openScreen(createEpisodesScreen(group)),
     };
   };
+
+  /** The line at the bottom: how many videos, and how many series and films they make. */
+  function describeLibrary() {
+    const filmCount = allSeries.filter((group) => group.isFilm).length;
+    const seriesCount = allSeries.length - filmCount;
+    const parts = [pluralize(files.length, 'video')];
+    if (seriesCount > 0) parts.push(`${seriesCount} series`);
+    if (filmCount > 0) parts.push(pluralize(filmCount, 'film'));
+    return parts.join(' · ');
+  }
 
   /** The videos grouped by the folder they are in, ignoring the series detection. */
   function groupByFolder() {
@@ -285,7 +311,7 @@ function createVideosScreen() {
     allSeries = groupIntoSeries(files, roots);
     screen.updateSpec({
       loading: null,
-      status: `${files.length} videos in ${allSeries.length} series`,
+      status: describeLibrary(),
     });
     showItems();
   }

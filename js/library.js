@@ -186,7 +186,7 @@ const RELEASE_NOISE_WORDS = new Set(
   (
     '2160p 1440p 1080p 1080o 720p 480p 360p 4k uhd bluray blu-ray bdrip bdmv brrip bd webrip web-dl webdl web hdtv dvdrip dvd remux cr adn funi amzn nf ' +
     'x264 x265 h264 h265 hevc avc av1 xvid divx hi10p hi10 8bit 10bit 10bits aac ac3 eac3 dd+ ddp dts flac opus mp3 dual audio dualaudio multi multisub multisubs subs sub subbed dubbed ' +
-    'eng engsub english vostfr jpn jap msubs softsubs subtitle subtitles multiple repack proper uncensored uncut complete batch nced ncop v0 v1 v2 v3'
+    'eng engsub english tr turkce türkçe dublaj altyazili altyazılı vostfr jpn jap msubs softsubs subtitle subtitles multiple repack proper uncensored uncut complete batch nced ncop v0 v1 v2 v3'
   ).split(' '),
 );
 
@@ -206,7 +206,9 @@ function parseReleaseTitle(rawName) {
   );
   text = text.replace(/\s[-–]\s*\d{1,3}\s*[~\-–]\s*\d{1,3}\s*$/, ''); // trailing "- 01 ~ 12"
 
-  let year = null;
+  // "Film (2001)": the year is often in brackets, which were dropped with the other tags above
+  const bracketYear = /[([]((?:19|20)\d{2})[)\]]/.exec(rawName);
+  let year = bracketYear ? Number(bracketYear[1]) : null;
   const words = text
     .split(/\s+/)
     .filter(Boolean)
@@ -218,6 +220,8 @@ function parseReleaseTitle(rawName) {
       if (/^[a-z]*\d{3,4}[pi]$/i.test(word)) return false; // a resolution such as 1080p
       if (/^[0-9A-F]{8}$/i.test(word)) return false; // a CRC checksum
       if (/^(19|20)\d{2}$/.test(word)) {
+        // with the year given in brackets, a number like this belongs to the title ("2001 A Space Odyssey (1968)")
+        if (bracketYear) return true;
         year = year || Number(word);
         return false;
       }
